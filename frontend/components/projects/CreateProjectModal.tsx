@@ -84,8 +84,17 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
   // Fetch repos when manual GitHub username is provided
   const handleFetchByUsername = async () => {
-    const trimmed = githubUsername.trim();
+    let trimmed = githubUsername.trim();
     if (!trimmed) return;
+    
+    // Si el usuario pego la URL completa o uso un arroba, lo limpiamos
+    if (trimmed.includes('github.com/')) {
+      trimmed = trimmed.split('github.com/')[1].split('/')[0];
+    }
+    if (trimmed.startsWith('@')) {
+      trimmed = trimmed.substring(1);
+    }
+    
     setIsSearching(true);
     setFetchError(null);
     try {
