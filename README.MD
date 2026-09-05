@@ -150,8 +150,6 @@ Abre [http://localhost:3000](http://localhost:3000).
 
 ### Backend
 
-El backend de FastAPI todavía no está incluido en este repositorio, por lo que no hay un servicio backend que levantar localmente en este momento. Cuando se agregue, se documentarán aquí sus requisitos, variables de entorno y comando de inicio.
-
 
 
 ## Integrantes & Roles: 
