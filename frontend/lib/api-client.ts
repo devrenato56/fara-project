@@ -1,11 +1,25 @@
 import { getAccessToken } from "@/lib/supabase-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+function getApiUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && envUrl !== "http://localhost:8000" && envUrl.trim() !== "") {
+    return envUrl;
+  }
+  if (
+    typeof window !== "undefined" &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1"
+  ) {
+    return "https://fara-project.onrender.com";
+  }
+  return envUrl || "http://localhost:8000";
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = await getAccessToken();
+  const baseUrl = getApiUrl();
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
