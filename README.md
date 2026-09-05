@@ -125,8 +125,10 @@ Cubren el camino feliz y los casos de error de la ejecución en Piston, el parse
 ## Deploy
 
 - **Frontend → Vercel**: root directory `frontend/`. Variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL` (URL pública del backend).
-- **Backend → Railway / Render**: root directory `backend/`, usa el `Dockerfile` incluido. Variables: las de `.env.example`, más `CORS_ORIGINS` con el dominio de Vercel y `PISTON_API_URL` apuntando al servicio de Piston.
-- **Piston**: se despliega como un segundo servicio en la misma plataforma, desde la imagen `ghcr.io/engineer-man/piston` (requiere modo privilegiado). Hay que instalarle los runtimes una vez, igual que en local.
+- **Backend → Render**: hay un blueprint listo en [`render.yaml`](render.yaml) (runtime Docker, root `backend/`, health check en `/health`). Variables: las de `.env.example`, más `CORS_ORIGINS` con el dominio de Vercel y `PISTON_API_URL`.
+- **Piston**: **no puede correr en Render ni Railway** — su sandbox exige contenedores privilegiados y ninguna de las dos plataformas los permite. Se hospeda en una VM propia con Docker (`docker compose up -d piston`), y se apunta `PISTON_API_URL` a esa URL. Para una demo puntual sirve exponer el Piston local con un túnel (`cloudflared` / `ngrok`).
+
+El stack local completo (API + Piston) se levanta con `docker compose up -d --build` desde la raíz.
 
 Recordá agregar el dominio de producción a los Redirect URLs de Supabase Auth.
 

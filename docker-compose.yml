@@ -1,0 +1,33 @@
+# Stack local completo: API + runner de codigo.
+# Uso:  docker compose up -d --build
+#
+# Piston necesita --privileged para su sandbox, por eso corre aca y no en
+# Render/Railway (ninguno permite contenedores privilegiados). Ver README.
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston
+    container_name: fara-piston
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "2000:2000"
+    volumes:
+      - piston-packages:/piston/packages
+
+  api:
+    build: ./backend
+    container_name: fara-api
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      # Dentro de la red de compose, Piston se resuelve por nombre de servicio.
+      PISTON_API_URL: http://piston:2000/api/v2
+      CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - piston
+
+volumes:
+  piston-packages:

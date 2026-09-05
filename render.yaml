@@ -1,0 +1,29 @@
+# Blueprint de Render para el backend de FARA.
+# Render → New → Blueprint → apuntar a este repo.
+#
+# Ojo: Piston NO se despliega aca. Requiere contenedores privilegiados, que
+# Render no soporta. Se hospeda aparte y se apunta con PISTON_API_URL.
+services:
+  - type: web
+    name: fara-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      # sync: false => se cargan a mano en el dashboard, nunca en el repo.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: PISTON_API_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
