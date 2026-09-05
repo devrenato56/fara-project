@@ -1,4 +1,4 @@
-    # Fara
+# Fara
 
 ## Nombre y descripción
 
@@ -10,15 +10,21 @@ Los desarrolladores tienen que aprender nuevos lenguajes y frameworks todo el ti
 
 Esto genera dos problemas concretos:
 
-* Fricción innecesaria: se vuelve a explicar/practicar conceptos que el desarrollador ya domina, solo que en otro lenguaje.
-* Desconexión con la experiencia real: ninguna plataforma (Udemy, Pluralsight, LinkedIn Learning, roadmap.sh) parte del código que la persona ya construyó.
+* **Fricción innecesaria**: se vuelve a explicar/practicar conceptos que el desarrollador ya domina, solo que en otro lenguaje.
+* **Desconexión con la experiencia real**: ninguna plataforma (Udemy, Pluralsight, LinkedIn Learning, roadmap.sh) parte del código que la persona ya construyó.
 
 Datos que respaldan el problema:
 
-* Según el Future of Jobs Report del World Economic Forum, el 39% de las habilidades clave en tecnología cambiará en los próximos años.
+* Según el Future of Jobs Report del World Economic Forum (WEF), el 39% de las habilidades clave en tecnología cambiará en los próximos años.
+* El WEF tambien estima que **59 de cada 100 trabajadores** necesitarán reskilling o upskilling antes de 2030, y el **63% de los empleadores** ve las brechas de habilidades como la principal barrera para transformar sus organizaciones.
 * Según reportes de Developer Experience (Atlassian DevEx), el 69% de los ingenieros pierde 8+ horas por semana en ineficiencias de contexto y reacondicionamiento técnico.
+* LinkedIn reporta que el **49%** de los líderes de aprendizaje y talento dice que sus ejecutivos están preocupados porque los empleados no tienen las habilidades para ejecutar la estrategia del negocio.
+* La tasa de finalización de cursos MOOC gratuitos (Coursera, edX, Udemy) ronda apenas el **15-20%**, pese a tener decenas de millones de usuarios inscritos: el acceso al contenido no es el problema, terminarlo y aplicarlo sí.
+* Según la Encuesta de Desarrolladores 2025 de Stack Overflow, el **68%** de los desarrolladores prefiere ir directo a la documentación técnica antes que a tutoriales o cursos en video: buscan resolver *su* problema real, no seguir una ruta genérica.
 
 El problema de fondo no es la falta de contenido educativo (sobra), sino la falta de un puente entre lo que el profesional ya sabe hacer y la tecnología nueva que necesita incorporar.
+
+*Fuentes: [World Economic Forum – Future of Jobs Report 2025](https://www.weforum.org/publications/the-future-of-jobs-report-2025/) · [LinkedIn – Workplace Learning Report 2025](https://learning.linkedin.com/resources/workplace-learning-report) · [Stack Overflow Developer Survey 2025](https://survey.stackoverflow.co/2025/)*
 
 ### Usuario objetivo
 
