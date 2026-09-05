@@ -14,13 +14,13 @@ interface CreateProjectModalProps {
 }
 
 const AVAILABLE_TECHS = [
-  { name: "Go", icon: "⚡" },
-  { name: "Docker", icon: "🐳" },
-  { name: "PostgreSQL", icon: "🐘" },
-  { name: "Redis", icon: "🔴" },
-  { name: "Rust", icon: "🦀" },
-  { name: "TypeScript", icon: "🟦" },
-  { name: "Python", icon: "🐍" },
+  { name: "Go", color: "bg-cyan-400" },
+  { name: "Docker", color: "bg-sky-400" },
+  { name: "PostgreSQL", color: "bg-indigo-400" },
+  { name: "Redis", color: "bg-rose-400" },
+  { name: "Rust", color: "bg-orange-400" },
+  { name: "TypeScript", color: "bg-blue-400" },
+  { name: "Python", color: "bg-amber-400" },
 ];
 
 interface GitHubRepo {
@@ -33,7 +33,7 @@ interface GitHubRepo {
 
 export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
   const router = useRouter();
-  const { createProject } = useApp();
+  const { createProject, user } = useApp();
 
   const [activeProvider, setActiveProvider] = useState<"github" | "gitlab" | "bitbucket">("github");
   const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
@@ -46,28 +46,58 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [isGenerating, setIsGenerating] = useState(false);
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [problemsReady, setProblemsReady] = useState(false);
+  const [githubUsername, setGithubUsername] = useState("");
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [needsManualUsername, setNeedsManualUsername] = useState(false);
 
-  // Debounce search
+  // Fetch my repos on mount — let the backend resolve the GitHub username
   useEffect(() => {
-    if (!searchQuery || searchQuery.length < 2) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-    const timer = setTimeout(async () => {
+    if (!user?.username) return;
+
+    const fetchMyRepos = async () => {
       setIsSearching(true);
+      setFetchError(null);
       try {
-        const results = await apiClient.get<GitHubRepo[]>(`/github/search?q=${searchQuery}`);
+        // Try without explicit username first (backend extracts from Supabase identity)
+        const results = await apiClient.get<GitHubRepo[]>("/github/my-repos");
         setSearchResults(results);
-      } catch (e) {
-        console.error("Failed to search GitHub repos", e);
+        setNeedsManualUsername(false);
+      } catch (e: any) {
+        console.warn("Auto-detect GitHub username failed, trying with profile username...", e);
+        try {
+          // Fallback: try with the profile username
+          const results = await apiClient.get<GitHubRepo[]>(`/github/my-repos?username=${user.username}`);
+          setSearchResults(results);
+          setNeedsManualUsername(false);
+        } catch (e2: any) {
+          console.error("Failed to fetch GitHub repos", e2);
+          setNeedsManualUsername(true);
+          setFetchError("No se pudo detectar tu usuario de GitHub. Ingresa tu username abajo.");
+        }
       } finally {
         setIsSearching(false);
       }
-    }, 500);
+    };
 
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+    fetchMyRepos();
+  }, [user?.username]);
+
+  // Fetch repos when manual GitHub username is provided
+  const handleFetchByUsername = async () => {
+    const trimmed = githubUsername.trim();
+    if (!trimmed) return;
+    setIsSearching(true);
+    setFetchError(null);
+    try {
+      const results = await apiClient.get<GitHubRepo[]>(`/github/search-repos?username=${trimmed}`);
+      setSearchResults(results);
+      setNeedsManualUsername(false);
+    } catch (e: any) {
+      setFetchError(`No se encontraron repos para "${trimmed}". Verifica el username.`);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   useEffect(() => {
     if (!createdProjectId) return;
@@ -108,7 +138,6 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     if (trimmed && !selectedRepos.includes(trimmed)) {
       setSelectedRepos((prev) => [...prev, trimmed]);
       setSearchQuery("");
-      setSearchResults([]);
     }
   };
 
@@ -135,12 +164,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-lg animate-in fade-in duration-300">
-      <div className="relative w-full max-w-2xl max-h-[95vh] overflow-y-auto rounded-[1.5rem] sm:rounded-[2rem] border border-white/20 bg-white/90 p-5 sm:p-8 shadow-2xl transition-all dark:border-neutral-700/50 dark:bg-neutral-900/90 shadow-[0_0_50px_rgba(0,0,0,0.2)] dark:shadow-[0_0_50px_rgba(0,0,0,0.6)]">
-        
-        {/* Glow ambient background effect */}
-        <div className="pointer-events-none absolute -top-32 -right-32 h-64 w-64 rounded-full bg-amber-500/20 blur-[80px]" />
-        <div className="pointer-events-none absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-emerald-500/20 blur-[80px]" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
+      <div className="relative w-full sm:max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl border border-slate-700/60 bg-slate-900 p-4 sm:p-6 lg:p-8 shadow-2xl">
 
         {isGenerating ? (
           <LoadingState
@@ -152,16 +177,16 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         ) : (
           <div className="relative z-10">
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-neutral-200/60 pb-4 sm:pb-6 dark:border-neutral-800/60">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-neutral-800 to-neutral-950 text-white shadow-lg dark:from-neutral-100 dark:to-neutral-300 dark:text-neutral-900">
-                  <Layers className="h-6 w-6" />
+            <div className="flex items-start justify-between border-b border-slate-800/60 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+                  <Layers className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-neutral-900 dark:text-white">
+                  <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
                     Crear nuevo proyecto
                   </h2>
-                  <p className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                  <p className="text-xs sm:text-sm text-slate-500">
                     Vincular repositorios para generar problemas de práctica
                   </p>
                 </div>
@@ -169,38 +194,39 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
               <button
                 onClick={onClose}
-                className="rounded-full p-2.5 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200 cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="Close"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-8">
+            <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-6">
               {/* Step 1: Conectar repositorios */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-xs font-black text-white shadow-sm dark:bg-white dark:text-neutral-900">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-300">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-400 border border-emerald-500/20">
                       1
                     </span>
-                    Repositorios de Origen
+                    Repositorios de origen
                   </label>
-                  <span className="text-xs font-bold text-neutral-400">
+                  <span className="text-xs font-medium text-slate-500">
                     {selectedRepos.length} seleccionado(s)
                   </span>
                 </div>
 
                 {/* Tabs de Proveedores */}
-                <div className="flex rounded-xl border border-neutral-200/80 bg-neutral-100/60 p-1.5 shadow-inner dark:border-neutral-800/80 dark:bg-neutral-950/60">
+                <div className="flex rounded-xl border border-slate-700/60 bg-slate-800/40 p-1">
                   {(["github", "gitlab", "bitbucket"] as const).map((provider) => (
                     <button
                       key={provider}
                       type="button"
                       onClick={() => setActiveProvider(provider)}
-                      className={`flex-1 rounded-lg py-2 text-sm font-bold capitalize transition-all duration-300 ${
+                      className={`flex-1 rounded-lg py-2 text-sm font-semibold capitalize transition-all cursor-pointer ${
                         activeProvider === provider
-                          ? "bg-white text-neutral-900 shadow-sm ring-1 ring-black/5 dark:bg-neutral-800 dark:text-white dark:ring-white/10"
-                          : "text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200"
+                          ? "bg-slate-700 text-slate-200 shadow-sm"
+                          : "text-slate-500 hover:text-slate-300"
                       }`}
                     >
                       {provider}
@@ -210,18 +236,19 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
                 {/* Chips de Repositorios Seleccionados */}
                 {selectedRepos.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-2">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {selectedRepos.map((repo) => (
                       <span
                         key={repo}
-                        className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-mono font-semibold text-neutral-800 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-700/60 bg-slate-800/60 px-3 py-1.5 text-xs font-mono font-medium text-slate-300"
                       >
-                        <GitBranch className="h-3.5 w-3.5 text-neutral-400" />
+                        <GitBranch className="h-3.5 w-3.5 text-slate-500" />
                         {repo}
                         <button
                           type="button"
                           onClick={() => toggleRepo(repo)}
-                          className="ml-1 text-neutral-400 hover:text-rose-500 transition-colors"
+                          className="ml-1 text-slate-500 hover:text-rose-400 transition-colors cursor-pointer"
+                          aria-label={`Remove ${repo}`}
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -230,14 +257,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                   </div>
                 )}
 
-                {/* Input para buscar o agregar repo personalizado */}
+                {/* Input para filtrar repos */}
                 <div className="relative pt-1">
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative flex-1">
-                      <Search className="absolute left-3.5 top-3 h-4.5 w-4.5 text-neutral-400" />
+                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
                       <input
                         type="text"
-                        placeholder="Buscar repositorio público o pegar (ej. facebook/react)"
+                        placeholder="Filtrar tus repositorios..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => {
@@ -246,86 +273,130 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                             handleAddCustomRepo();
                           }
                         }}
-                        className="w-full rounded-xl border border-neutral-300 bg-white/80 py-2.5 pl-10 pr-4 text-sm text-neutral-900 placeholder-neutral-400 shadow-sm focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/20 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950/80 dark:text-white dark:focus:border-white dark:focus:ring-white/20 transition-all"
+                        className="w-full rounded-xl border border-slate-700/60 bg-slate-800/60 py-2.5 pl-9 pr-4 text-sm text-slate-200 placeholder-slate-500 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition-all"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={handleAddCustomRepo}
-                      className="flex items-center justify-center gap-1.5 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 shadow-sm"
+                      className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-700/60 bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-300 transition-colors hover:bg-slate-700 cursor-pointer"
                     >
                       <Plus className="h-4 w-4" />
                       Añadir
                     </button>
                   </div>
-                  
-                  {/* Resultados de búsqueda */}
-                  {searchQuery.length >= 2 && activeProvider === "github" && (
-                    <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-800 max-h-60 overflow-y-auto">
-                      {isSearching ? (
-                        <div className="flex items-center justify-center p-4">
-                          <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
-                          <span className="ml-2 text-sm text-neutral-500">Buscando...</span>
-                        </div>
-                      ) : searchResults.length > 0 ? (
-                        <ul className="divide-y divide-neutral-100 dark:divide-neutral-700/50">
-                          {searchResults.map((repo) => (
-                            <li key={repo.id}>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  toggleRepo(repo.full_name);
-                                  setSearchQuery("");
-                                  setSearchResults([]);
-                                }}
-                                className="w-full text-left px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors flex items-center justify-between"
-                              >
-                                <div>
-                                  <div className="font-mono text-sm font-semibold text-neutral-900 dark:text-white">
-                                    {repo.full_name}
-                                  </div>
-                                  {repo.description && (
-                                    <div className="text-xs text-neutral-500 truncate mt-1">
-                                      {repo.description}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500">
-                                  {repo.language && (
-                                    <span className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-md">
-                                      {repo.language}
-                                    </span>
-                                  )}
-                                  <span className="flex items-center gap-1">
-                                    <span className="text-amber-500">★</span> {repo.stargazers_count}
-                                  </span>
-                                </div>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="p-4 text-sm text-neutral-500 text-center">
-                          No se encontraron repositorios públicos.
+                                {/* Resultados de búsqueda o lista de repos */}
+                  {activeProvider === "github" && (
+                    <>
+                      {/* Manual GitHub username input (shown when auto-detect fails) */}
+                      {needsManualUsername && (
+                        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
+                          {fetchError && (
+                            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-3">
+                              ⚠️ {fetchError}
+                            </p>
+                          )}
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Tu username de GitHub (ej. octocat)"
+                              value={githubUsername}
+                              onChange={(e) => setGithubUsername(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleFetchByUsername();
+                                }
+                              }}
+                              className="flex-1 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none dark:border-amber-800 dark:bg-neutral-900 dark:text-white transition-all"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleFetchByUsername}
+                              disabled={!githubUsername.trim()}
+                              className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50 dark:bg-amber-500 dark:hover:bg-amber-600"
+                            >
+                              Buscar
+                            </button>
+                          </div>
                         </div>
                       )}
-                    </div>
+
+                      {/* Repos list dropdown */}
+                      {!needsManualUsername && (
+                        <div className="mt-2 w-full overflow-hidden rounded-xl border border-slate-700/60 bg-slate-800/80 max-h-52 overflow-y-auto">
+                          {isSearching ? (
+                            <div className="flex items-center justify-center p-4">
+                              <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
+                              <span className="ml-2 text-sm text-slate-500">Cargando tus repositorios...</span>
+                            </div>
+                          ) : searchResults.length > 0 ? (
+                            <ul className="divide-y divide-slate-700/40">
+                              {searchResults
+                                .filter(repo => repo.full_name.toLowerCase().includes(searchQuery.toLowerCase()))
+                                .map((repo) => {
+                                  const isAlreadySelected = selectedRepos.includes(repo.full_name);
+                                  return (
+                                    <li key={repo.id}>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          toggleRepo(repo.full_name);
+                                          setSearchQuery("");
+                                        }}
+                                        className={`w-full text-left px-4 py-3 transition-colors flex items-center justify-between cursor-pointer min-h-[44px] ${
+                                          isAlreadySelected ? "bg-emerald-500/5" : "hover:bg-slate-700/40"
+                                        }`}
+                                      >
+                                        <div className="min-w-0">
+                                          <div className="font-mono text-sm font-medium text-slate-200 truncate">
+                                            {repo.full_name}
+                                          </div>
+                                          {repo.description && (
+                                            <div className="text-xs text-slate-500 truncate mt-0.5">
+                                              {repo.description}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500 shrink-0 ml-3">
+                                          {repo.language && (
+                                            <span className="px-2 py-0.5 bg-slate-700/60 rounded-md text-slate-400">
+                                              {repo.language}
+                                            </span>
+                                          )}
+                                          {isAlreadySelected && (
+                                            <Check className="h-4 w-4 text-emerald-400" />
+                                          )}
+                                        </div>
+                                      </button>
+                                    </li>
+                                  );
+                                })}
+                            </ul>
+                          ) : (
+                            <div className="p-4 text-sm text-slate-500 text-center">
+                              No se encontraron repositorios públicos.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
 
               {/* Step 2: Configurar proyecto y Battle Stack */}
-              <div className="space-y-5 border-t border-neutral-200/60 pt-6 dark:border-neutral-800/60">
-                <label className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-xs font-black text-white shadow-sm dark:bg-white dark:text-neutral-900">
+              <div className="space-y-4 border-t border-slate-800/60 pt-5">
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-300">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-400 border border-emerald-500/20">
                     2
                   </span>
-                  Configuración del Proyecto & Battle Stack
+                  Configuración del proyecto
                 </label>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300">
+                    <label className="block text-sm font-medium text-slate-400">
                       Nombre del proyecto
                     </label>
                     <input
@@ -334,28 +405,28 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                       placeholder="ej. API de Usuarios & Autenticación"
                       value={projectName}
                       onChange={(e) => setProjectName(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-neutral-300 bg-white/80 px-4 py-2.5 text-sm text-neutral-900 shadow-sm focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/20 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950/80 dark:text-white dark:focus:border-white dark:focus:ring-white/20 transition-all"
+                      className="mt-1.5 w-full rounded-xl border border-slate-700/60 bg-slate-800/60 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300">
-                      Descripción corta <span className="text-neutral-400 font-normal">(opcional)</span>
+                    <label className="block text-sm font-medium text-slate-400">
+                      Descripción corta <span className="text-slate-600">(opcional)</span>
                     </label>
                     <input
                       type="text"
                       placeholder="ej. Microservicio de autenticación y transacciones"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-neutral-300 bg-white/80 px-4 py-2.5 text-sm text-neutral-900 shadow-sm focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/20 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950/80 dark:text-white dark:focus:border-white dark:focus:ring-white/20 transition-all"
+                      className="mt-1.5 w-full rounded-xl border border-slate-700/60 bg-slate-800/60 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-neutral-700 dark:text-neutral-300">
-                      Tecnologías objetivo a practicar (Battle Stack)
+                    <label className="block text-sm font-medium text-slate-400">
+                      Tecnologías objetivo (Battle Stack)
                     </label>
-                    <div className="mt-2.5 flex flex-wrap gap-2.5">
+                    <div className="mt-2.5 flex flex-wrap gap-2">
                       {AVAILABLE_TECHS.map((tech) => {
                         const isSelected = selectedTechs.includes(tech.name);
                         return (
@@ -363,15 +434,15 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                             key={tech.name}
                             type="button"
                             onClick={() => toggleTech(tech.name)}
-                            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all duration-300 ${
+                            className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all cursor-pointer min-h-[40px] ${
                               isSelected
-                                ? "bg-neutral-900 text-white shadow-md dark:bg-white dark:text-neutral-900 scale-105"
-                                : "border border-neutral-200 bg-white/80 text-neutral-700 hover:bg-neutral-100 hover:scale-105 dark:border-neutral-700 dark:bg-neutral-900/80 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25"
+                                : "border border-slate-700/60 bg-slate-800/40 text-slate-400 hover:bg-slate-700/60 hover:text-slate-300"
                             }`}
                           >
-                            <span>{tech.icon}</span>
+                            <span className={`h-2.5 w-2.5 rounded-full ${tech.color}`} />
                             <span>{tech.name}</span>
-                            {isSelected && <Check className="h-4 w-4 text-emerald-400 dark:text-emerald-600" />}
+                            {isSelected && <Check className="h-3.5 w-3.5 text-emerald-400" />}
                           </button>
                         );
                       })}
@@ -384,9 +455,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
               <button
                 type="submit"
                 disabled={!projectName.trim() || selectedRepos.length === 0}
-                className="mt-4 flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-neutral-900 to-neutral-800 py-4 text-base font-extrabold text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl disabled:opacity-50 disabled:hover:scale-100 dark:from-white dark:to-neutral-200 dark:text-neutral-900"
+                className="mt-2 flex w-full items-center justify-center gap-3 rounded-2xl bg-emerald-500 py-4 text-base font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-400 hover:shadow-emerald-500/30 disabled:opacity-40 disabled:hover:bg-emerald-500 cursor-pointer"
               >
-                <Sparkles className="h-5 w-5 text-amber-400 dark:text-amber-600" />
+                <Sparkles className="h-5 w-5" />
                 <span>Generar Proyecto & Problemas</span>
                 <ArrowRight className="h-5 w-5" />
               </button>

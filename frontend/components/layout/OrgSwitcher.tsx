@@ -23,16 +23,16 @@ export function OrgSwitcher() {
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-neutral-900 shadow-sm transition hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
+        className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-700/60 bg-slate-800/60 px-3 py-2.5 text-left text-sm font-medium text-slate-200 transition-colors hover:bg-slate-700/60 cursor-pointer"
       >
         <div className="flex items-center gap-2.5 truncate">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-700 text-slate-300">
             <Building2 className="h-4 w-4" />
           </div>
-          <span className="truncate font-medium">{currentOrg.name}</span>
+          <span className="truncate">{currentOrg.name}</span>
         </div>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-neutral-400 transition-transform ${
+          className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${
             open ? "rotate-180" : ""
           }`}
         />
@@ -47,8 +47,8 @@ export function OrgSwitcher() {
               setIsCreating(false);
             }}
           />
-          <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
-            <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-neutral-400">
+          <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-800 p-1.5 shadow-xl">
+            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500">
               Tus Organizaciones
             </div>
 
@@ -62,20 +62,20 @@ export function OrgSwitcher() {
                       switchOrg(org.id);
                       setOpen(false);
                     }}
-                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm transition ${
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm transition-colors cursor-pointer min-h-[40px] ${
                       isSelected
-                        ? "bg-neutral-100 font-semibold text-neutral-900 dark:bg-neutral-800 dark:text-white"
-                        : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800/50"
+                        ? "bg-emerald-500/10 font-semibold text-emerald-400"
+                        : "text-slate-400 hover:bg-slate-700/60 hover:text-slate-200"
                     }`}
                   >
                     <span className="truncate">{org.name}</span>
-                    {isSelected && <Check className="h-4 w-4 text-emerald-600" />}
+                    {isSelected && <Check className="h-4 w-4 text-emerald-400" />}
                   </button>
                 );
               })}
             </div>
 
-            <div className="mt-1 border-t border-neutral-100 pt-1 dark:border-neutral-800">
+            <div className="mt-1 border-t border-slate-700/60 pt-1">
               {isCreating ? (
                 <form onSubmit={handleCreate} className="p-1">
                   <input
@@ -84,19 +84,19 @@ export function OrgSwitcher() {
                     value={newOrgName}
                     onChange={(e) => setNewOrgName(e.target.value)}
                     autoFocus
-                    className="w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs text-neutral-900 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                    className="w-full rounded-lg border border-slate-600 bg-slate-700 px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:border-emerald-500/50 focus:outline-none"
                   />
                   <div className="mt-1.5 flex gap-1">
                     <button
                       type="submit"
-                      className="flex-1 rounded bg-neutral-900 py-1 text-xs font-semibold text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900"
+                      className="flex-1 rounded-lg bg-emerald-500 py-1.5 text-xs font-semibold text-slate-950 hover:bg-emerald-400 cursor-pointer"
                     >
                       Guardar
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsCreating(false)}
-                      className="rounded px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      className="rounded-lg px-2 py-1.5 text-xs text-slate-400 hover:bg-slate-700 cursor-pointer"
                     >
                       Cancelar
                     </button>
@@ -105,7 +105,7 @@ export function OrgSwitcher() {
               ) : (
                 <button
                   onClick={() => setIsCreating(true)}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800/50 dark:hover:text-neutral-200"
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-slate-500 hover:bg-slate-700/60 hover:text-slate-300 cursor-pointer min-h-[40px]"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Nueva organización

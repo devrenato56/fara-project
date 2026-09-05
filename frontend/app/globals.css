@@ -1,41 +1,129 @@
 @import "tailwindcss";
 
+/* ─── FARA Design Tokens ─────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --fara-bg: #0f172a;
+  --fara-surface: #1e293b;
+  --fara-card: #1b2336;
+  --fara-border: #334155;
+  --fara-border-subtle: #1e293b;
+  --fara-text: #f8fafc;
+  --fara-text-muted: #94a3b8;
+  --fara-text-dim: #64748b;
+  --fara-accent: #22c55e;
+  --fara-accent-muted: rgba(34, 197, 94, 0.15);
+  --fara-amber: #f59e0b;
+  --fara-amber-muted: rgba(245, 158, 11, 0.15);
+  --fara-destructive: #ef4444;
+  --fara-ring: rgba(34, 197, 94, 0.4);
+  --fara-glass-bg: rgba(15, 23, 42, 0.7);
+  --fara-glass-border: rgba(148, 163, 184, 0.12);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: var(--fara-bg);
+  --color-foreground: var(--fara-text);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  background: var(--fara-bg);
+  color: var(--fara-text);
+  font-family: var(--font-sans), "IBM Plex Sans", system-ui, -apple-system, sans-serif;
 }
 
+/* ─── Monospace override ─────────────────────────────────────────────── */
+code, pre, .font-mono, [class*="font-mono"] {
+  font-family: var(--font-mono), "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+}
+
+/* ─── Custom Scrollbar (Dark) ────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--fara-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fara-text-dim);
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────── */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes slideOutLeft {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-100%); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(34, 197, 94, 0.3); }
+  50%      { box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 .animate-fade-in {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-out-left {
+  animation: slideOutLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(148, 163, 184, 0.08) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Glass utility ──────────────────────────────────────────────────── */
+.glass {
+  background: var(--fara-glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--fara-glass-border);
 }
