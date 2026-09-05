@@ -3,6 +3,7 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
 from app.agents import generator, matcher
+from app.core.access import is_org_member, require_org_member, require_project_access
 from app.core.auth import CurrentUser, get_current_user
 from app.db.supabase import get_supabase
 from app.schemas.problem import ProblemOut
@@ -31,23 +32,6 @@ def _get_project_or_404(project_id: str) -> dict:
     return result.data[0]
 
 
-def _is_org_member(user_id: str, org_id: str) -> bool:
-    supabase = get_supabase()
-    result = (
-        supabase.table("memberships")
-        .select("id")
-        .eq("org_id", org_id)
-        .eq("user_id", user_id)
-        .execute()
-    )
-    return len(result.data) > 0
-
-
-def _require_org_member(user_id: str, org_id: str) -> None:
-    if not _is_org_member(user_id, org_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this organization")
-
-
 def _project_to_out(project: dict) -> ProjectOut:
     repos = [r["repo_full_name"] for r in project.get("project_repos", [])]
     technologies = [pt["technologies"]["name"] for pt in project.get("project_tech", []) if pt.get("technologies")]
@@ -56,7 +40,7 @@ def _project_to_out(project: dict) -> ProjectOut:
 
 @router.post("", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
 def create_project(body: ProjectCreate, user: CurrentUser = Depends(get_current_user)) -> ProjectOut:
-    _require_org_member(user.id, body.org_id)
+    require_org_member(user.id, body.org_id)
 
     supabase = get_supabase()
 
@@ -96,7 +80,7 @@ def create_project(body: ProjectCreate, user: CurrentUser = Depends(get_current_
 
 @router.get("", response_model=list[ProjectOut])
 def list_projects(org_id: str, user: CurrentUser = Depends(get_current_user)) -> list[ProjectOut]:
-    _require_org_member(user.id, org_id)
+    require_org_member(user.id, org_id)
 
     supabase = get_supabase()
     result = (
@@ -120,7 +104,9 @@ def get_project(project_id: str, user: CurrentUser = Depends(get_current_user)) 
     if not result.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
     project = result.data[0]
-    _require_org_member(user.id, project["org_id"])
+    # ProjectMember externo (via invitacion) tambien necesita ver el proyecto
+    # para poder pelear en el (Fase 5).
+    require_project_access(user.id, project)
 
     problems_result = (
         supabase.table("problems")
@@ -147,7 +133,7 @@ def get_project(project_id: str, user: CurrentUser = Depends(get_current_user)) 
 @router.post("/{project_id}/invite", response_model=ProjectInviteOut)
 def get_invite_link(project_id: str, user: CurrentUser = Depends(get_current_user)) -> ProjectInviteOut:
     project = _get_project_or_404(project_id)
-    _require_org_member(user.id, project["org_id"])
+    require_org_member(user.id, project["org_id"])
     return ProjectInviteOut(invite_token=project["invite_token"])
 
 
@@ -172,7 +158,7 @@ def join_project(
     if existing.data:
         return ProjectMemberOut(**existing.data[0])
 
-    is_external = not _is_org_member(user.id, project["org_id"])
+    is_external = not is_org_member(user.id, project["org_id"])
 
     result = (
         supabase.table("project_members")
@@ -260,7 +246,7 @@ def generate_problems(
     user: CurrentUser = Depends(get_current_user),
 ) -> dict:
     project = _get_project_or_404(project_id)
-    _require_org_member(user.id, project["org_id"])
+    require_org_member(user.id, project["org_id"])
 
     background_tasks.add_task(_generate_problems_task, project_id)
     return {"status": "generating"}

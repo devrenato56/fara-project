@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.agents.evaluator import evaluar_submission
+from app.agents.evaluator import PASS_THRESHOLD, evaluar_submission
 from app.core.auth import CurrentUser, get_current_user
 from app.db.supabase import get_supabase
 from app.schemas.submission import SubmissionCreate, SubmissionOut
+from app.services.llm import LLMUnavailableError
 from app.services.piston import PistonExecutionError, run_code
 
 router = APIRouter(prefix="/problems", tags=["submissions"])
-
-PASS_THRESHOLD = 70
 
 
 @router.post("/{problem_id}/submissions", response_model=SubmissionOut, status_code=status.HTTP_201_CREATED)
@@ -27,7 +26,14 @@ async def submit_solution(
     except PistonExecutionError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
-    evaluacion = await evaluar_submission(problem, body.code, resultado_ejecucion)
+    try:
+        evaluacion = await evaluar_submission(problem, body.code, resultado_ejecucion)
+    except LLMUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="El evaluador no está disponible en este momento. Reintenta el envío.",
+        ) from exc
+
     submission_status = "passed" if evaluacion["score"] >= PASS_THRESHOLD else "failed"
 
     inserted = (

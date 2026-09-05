@@ -5,6 +5,9 @@
 from app.services.json_llm import parse_json_object
 from app.services.llm import generate
 
+# Score minimo para considerar aprobado un envio (modo Code y modo Fight).
+PASS_THRESHOLD = 70
+
 _PROMPT_TEMPLATE = """Sos un evaluador tecnico. Un usuario intento resolver este problema:
 
 Titulo: {title}

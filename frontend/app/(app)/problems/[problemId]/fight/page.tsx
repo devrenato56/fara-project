@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -11,13 +11,26 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { apiClient } from "@/lib/api-client";
+import { mapProblem } from "@/lib/mappers";
+import { technologyToRuntime } from "@/lib/runtimes";
 
-const BATTLE_STACKS = [
-  { name: "Go", icon: "⚡", tag: "Recomendado" },
-  { name: "Docker", icon: "🐳" },
-  { name: "PostgreSQL", icon: "🐘" },
-  { name: "Redis", icon: "🔴" },
-];
+const STACK_ICONS: Record<string, string> = {
+  Go: "⚡",
+  Docker: "🐳",
+  PostgreSQL: "🐘",
+  Redis: "🔴",
+  Python: "🐍",
+  JavaScript: "🟨",
+  TypeScript: "🟦",
+  Rust: "🦀",
+};
+
+const DIFFICULTY_LEVELS = [
+  { id: "easy", label: "Aprendiz", hint: "La IA va lenta y comete más errores visibles" },
+  { id: "medium", label: "Intermedio", hint: "Ritmo constante, errores puntuales" },
+  { id: "hard", label: "Experto", hint: "La IA va rápida y casi no duda" },
+] as const;
 
 export default function FightSetupPage() {
   const params = useParams();
@@ -25,32 +38,59 @@ export default function FightSetupPage() {
   const problemId = (params?.problemId as string) || "prob-3";
   const { getProblem, getProject, user } = useApp();
 
-  const problem = getProblem(problemId) || {
-    id: problemId,
-    projectId: "proj-1",
-    title: "Concurrencia con Goroutines",
-    description: "Competición en tiempo real de worker pools concurrentes.",
-  };
+  const [fetchedProblem, setFetchedProblem] = useState<ReturnType<typeof mapProblem> | null>(null);
+  useEffect(() => {
+    apiClient
+      .get<any>(`/problems/${problemId}`)
+      .then((data) => setFetchedProblem(mapProblem(data)))
+      .catch(() => {});
+  }, [problemId]);
+
+  const problem = fetchedProblem ||
+    getProblem(problemId) || {
+      id: problemId,
+      projectId: "proj-1",
+      title: "Cargando problema...",
+      description: "",
+      adaptableTo: [] as string[],
+    };
 
   const project = getProject(problem.projectId) || {
     id: problem.projectId,
-    name: "API de Tareas",
+    name: "Proyecto",
   };
 
-  const [opponentType, setOpponentType] = useState<"ai" | "human">("ai");
-  const [selectedStack, setSelectedStack] = useState("Go");
-  const [isStarting, setIsStarting] = useState(false);
+  const battleStacks = problem.adaptableTo?.length ? problem.adaptableTo : ["Go"];
 
-  const handleStartFight = () => {
+  const [opponentType, setOpponentType] = useState<"ai" | "human">("ai");
+  const [selectedStack, setSelectedStack] = useState<string | null>(null);
+  const [level, setLevel] = useState<"easy" | "medium" | "hard">("medium");
+  const [isStarting, setIsStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const stack = selectedStack ?? battleStacks[0];
+
+  const handleStartFight = async () => {
     setIsStarting(true);
-    const matchId = `match-${Date.now()}`;
-    setTimeout(() => {
+    setError(null);
+    try {
+      const match = await apiClient.post<any>("/matches", {
+        problem_id: problem.id,
+        opponent_type: opponentType,
+        technology: stack,
+        level,
+      });
+
+      const lang = technologyToRuntime(stack);
       if (opponentType === "ai") {
-        router.push(`/match/${matchId}/arena?opponent=ai&problemId=${problem.id}`);
+        router.push(`/match/${match.id}/arena?opponent=ai&problemId=${problem.id}&lang=${lang}`);
       } else {
-        router.push(`/match/${matchId}/waiting-room?problemId=${problem.id}`);
+        router.push(`/match/${match.id}/waiting-room?problemId=${problem.id}&lang=${lang}`);
       }
-    }, 600);
+    } catch {
+      setError("No se pudo iniciar el duelo. Intenta de nuevo.");
+      setIsStarting(false);
+    }
   };
 
   return (
@@ -172,34 +212,71 @@ export default function FightSetupPage() {
         </p>
 
         <div className="mt-4 flex flex-wrap gap-3">
-          {BATTLE_STACKS.map((stack) => {
-            const isSelected = selectedStack === stack.name;
+          {battleStacks.map((name) => {
+            const isSelected = stack === name;
             return (
               <button
-                key={stack.name}
+                key={name}
                 type="button"
-                onClick={() => setSelectedStack(stack.name)}
+                onClick={() => setSelectedStack(name)}
                 className={`flex items-center gap-2.5 rounded-2xl border-2 px-5 py-3 text-sm font-bold transition ${
                   isSelected
                     ? "border-neutral-900 bg-neutral-900 text-white shadow-xs dark:border-white dark:bg-white dark:text-neutral-900"
                     : "border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300"
                 }`}
               >
-                <span className="text-lg">{stack.icon}</span>
-                <span>{stack.name}</span>
-                {stack.tag && (
-                  <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[9px] font-extrabold text-amber-900">
-                    {stack.tag}
-                  </span>
-                )}
+                <span className="text-lg">{STACK_ICONS[name] ?? "🧩"}</span>
+                <span>{name}</span>
               </button>
             );
           })}
         </div>
       </div>
 
+      {/* Nivel de la IA (solo aplica al duelo contra la IA) */}
+      {opponentType === "ai" && (
+        <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-400">
+            Nivel de la IA
+          </h3>
+          <p className="mt-0.5 text-xs text-neutral-500">
+            Calibra el ritmo y la cantidad de errores deliberados que va a cometer:
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {DIFFICULTY_LEVELS.map((option) => {
+              const isSelected = level === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setLevel(option.id)}
+                  className={`rounded-2xl border-2 p-4 text-left transition ${
+                    isSelected
+                      ? "border-neutral-900 bg-neutral-50 dark:border-white dark:bg-neutral-800"
+                      : "border-neutral-200 bg-neutral-50 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950"
+                  }`}
+                >
+                  <div className="text-sm font-bold text-neutral-900 dark:text-white">
+                    {option.label}
+                  </div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-neutral-500">
+                    {option.hint}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Botón de Iniciar */}
       <div className="flex flex-col items-center gap-3">
+        {error && (
+          <div className="w-full max-w-sm rounded-xl bg-rose-50 py-2 text-center text-sm font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+            {error}
+          </div>
+        )}
         <button
           onClick={handleStartFight}
           disabled={isStarting}

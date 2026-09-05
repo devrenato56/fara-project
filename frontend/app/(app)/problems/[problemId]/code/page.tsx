@@ -15,12 +15,7 @@ import { LoadingState } from "@/components/common/LoadingState";
 import { useApp } from "@/context/AppContext";
 import { apiClient } from "@/lib/api-client";
 import { mapProblem } from "@/lib/mappers";
-
-const RUNTIME_VERSIONS: Record<string, string> = {
-  go: "1.16.2",
-  python: "3.10.0",
-  javascript: "20.11.1",
-};
+import { versionFor } from "@/lib/runtimes";
 
 export default function ProblemCodeModePage() {
   const params = useParams();
@@ -120,7 +115,7 @@ func main() {
       const submission = await apiClient.post<any>(`/problems/${problem.id}/submissions`, {
         code,
         language,
-        version: RUNTIME_VERSIONS[language] ?? RUNTIME_VERSIONS.go,
+        version: versionFor(language),
       });
       setResult({ score: submission.score, feedback: submission.feedback, status: submission.status });
     } catch {

@@ -68,7 +68,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAuthChecked(true);
     };
 
-    supabase.auth.getUser().then(({ data }) => loadUser(data.user));
+    // Solo onAuthStateChange: su primer disparo espera a que supabase-js
+    // termine de parsear el token de retorno de OAuth de la URL. Llamar a
+    // getUser() en paralelo puede resolver "sin sesión" antes de que ese
+    // parseo termine, mandando al guard de abajo a /login de arranque.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       loadUser(session?.user ?? null);
     });

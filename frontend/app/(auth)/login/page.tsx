@@ -6,11 +6,16 @@ import { GithubIcon } from "@/components/common/Icons";
 import { supabase } from "@/lib/supabase-client";
 
 export default function LoginPage() {
-  const handleSignIn = (provider: "google" | "github") => {
-    supabase.auth.signInWithOAuth({
+  const handleSignIn = async (provider: "google" | "github") => {
+    const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: `${window.location.origin}/dashboard` },
     });
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.error(`signInWithOAuth(${provider}) falló:`, error.message);
+      alert(`No se pudo iniciar sesión con ${provider}: ${error.message}`);
+    }
   };
 
   return (

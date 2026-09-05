@@ -1,5 +1,30 @@
-import { Organization, Problem, ProjectMember, Project } from "@/types";
+import { AIRunStep, Match, Organization, Problem, ProjectMember, Project } from "@/types";
 import { supabase } from "@/lib/supabase-client";
+
+export function mapMatch(m: any): Match {
+  const steps: AIRunStep[] = (m.ai_reveal_script ?? []).map((s: any) => ({
+    timeSec: s.time_sec ?? 0,
+    code: s.code ?? "",
+    description: s.description,
+    isBuggy: s.is_buggy ?? false,
+  }));
+
+  return {
+    id: m.id,
+    problemId: m.problem_id,
+    problemTitle: "",
+    challengerId: m.challenger_id,
+    challengerName: "",
+    opponentType: m.opponent_type,
+    opponentUserId: m.opponent_user_id ?? undefined,
+    status: m.status,
+    durationSec: m.duration_sec,
+    startedAt: m.started_at ?? undefined,
+    winnerId: m.winner_id ?? undefined,
+    aiCompletionTimeSec: m.ai_completion_time_sec ?? undefined,
+    aiRevealScript: steps,
+  };
+}
 
 export function mapOrganization(o: any): Organization {
   return { id: o.id, name: o.name, ownerId: o.owner_id };
