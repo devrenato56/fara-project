@@ -11,6 +11,10 @@ app = FastAPI(title="FARA API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
+    # Vercel genera un dominio distinto por cada preview/redeploy, asi que
+    # ademas de la lista explicita se aceptan los dominios *.vercel.app y
+    # localhost: evita que un redeploy con URL nueva rompa el frontend.
+    allow_origin_regex=r"https://.*\.vercel\.app|http://localhost:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
