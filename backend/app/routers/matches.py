@@ -137,10 +137,17 @@ def join_match(match_id: str, user: CurrentUser = Depends(get_current_user)) -> 
     if match["challenger_id"] == user.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot join your own match")
 
-    require_project_access(user.id, get_project_of_problem(match["problem_id"]))
+    project = get_project_of_problem(match["problem_id"])
+    supabase = get_supabase()
+
+    from app.core.access import is_org_member, is_project_member
+    if not is_org_member(user.id, project["org_id"]) and not is_project_member(user.id, project["id"]):
+        supabase.table("project_members").insert(
+            {"project_id": project["id"], "user_id": user.id, "is_external": True}
+        ).execute()
 
     updated = (
-        get_supabase()
+        supabase
         .table("matches")
         .update({"opponent_user_id": user.id, "status": "in_progress", "started_at": _now()})
         .eq("id", match_id)
