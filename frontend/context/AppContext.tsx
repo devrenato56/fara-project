@@ -103,8 +103,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const fetchProjects = useCallback(async (orgId: string) => {
-    const data = await apiClient.get<any[]>(`/projects?org_id=${orgId}`);
-    setProjects(data.map((p) => mapProject(p)));
+    try {
+      const data = await apiClient.get<any[]>(`/projects?org_id=${orgId}`);
+      setProjects(data.map((p) => mapProject(p)));
+    } catch (err) {
+      console.error("Error al cargar proyectos:", err);
+    }
   }, []);
 
   useEffect(() => {

@@ -33,9 +33,23 @@ def _get_project_or_404(project_id: str) -> dict:
 
 
 def _project_to_out(project: dict) -> ProjectOut:
-    repos = [r["repo_full_name"] for r in project.get("project_repos", [])]
-    technologies = [pt["technologies"]["name"] for pt in project.get("project_tech", []) if pt.get("technologies")]
-    return ProjectOut(**{**project, "repos": repos, "technologies": technologies})
+    repos = [r["repo_full_name"] for r in project.get("project_repos", []) if isinstance(r, dict) and "repo_full_name" in r]
+    technologies = [pt["technologies"]["name"] for pt in project.get("project_tech", []) if isinstance(pt, dict) and pt.get("technologies")]
+    problems = project.get("problems", [])
+    problems_count = len(problems)
+    completed_count = sum(1 for p in problems if isinstance(p, dict) and p.get("status") == "completed")
+    progress_percent = int((completed_count / problems_count) * 100) if problems_count > 0 else 0
+
+    return ProjectOut(
+        **{
+            **project,
+            "repos": repos,
+            "technologies": technologies,
+            "problems_count": problems_count,
+            "completed_count": completed_count,
+            "progress_percent": progress_percent,
+        }
+    )
 
 
 @router.post("", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
@@ -75,6 +89,9 @@ def create_project(body: ProjectCreate, user: CurrentUser = Depends(get_current_
         **project,
         repos=list(body.repos),
         technologies=list(body.technologies),
+        problems_count=0,
+        completed_count=0,
+        progress_percent=0,
     )
 
 
@@ -85,7 +102,7 @@ def list_projects(org_id: str, user: CurrentUser = Depends(get_current_user)) ->
     supabase = get_supabase()
     result = (
         supabase.table("projects")
-        .select("*, project_repos(repo_full_name), project_tech(technologies(name))")
+        .select("*, project_repos(repo_full_name), project_tech(technologies(name)), problems(id, status)")
         .eq("org_id", org_id)
         .execute()
     )

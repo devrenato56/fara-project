@@ -37,6 +37,9 @@ class ProjectOut(BaseModel):
     created_at: datetime
     repos: list[str]
     technologies: list[str]
+    problems_count: int = 0
+    completed_count: int = 0
+    progress_percent: int = 0
 
 
 class ProjectDetailOut(ProjectOut):
