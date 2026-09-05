@@ -42,12 +42,20 @@ Perfil Junior:
 ### Usuario objetivo
 **Model: B2C**
 
-Premium: 
-- Número de proyectos que puedes crear
-- Numero de organizaciones.
+Free: 
+- Limite de hasta 3 proyectos. 
+- Limite de hasta 3 organizacione.
 - Número de tecnologías por proyectos. 
-- Número de Participantes por organizaciones 
+- Solo 1 participante por organización
+- Tecnologías limitadas
+
+Premium: 
+- Número ilimitado de proyectos que puedes crear
+- Numero ilimitado de organizaciones.
+- 9 de tecnologías por proyectos. 
+- Número ilimitado de participantes por organizaciones 
 - Acceso a tecnologias nuevas. 
+
 
 ### MVP
 
@@ -103,7 +111,7 @@ Elegido por sobre Django/Flask porque:
 
 ### LLM orquestador
 
-**Gemini 2.0 Flash** para el análisis de repos y generación de problemas:
+**Gemini 3.6 Flash** para el análisis de repos y generación de problemas:
 - Tier gratuito generoso, suficiente para la demo.
 - Contexto largo, permite mandar varios archivos de código en un solo prompt sin necesidad de embeddings/RAG para el volumen de una demo.
 
@@ -117,22 +125,20 @@ No se usan frameworks de agentes (LangChain, CrewAI). Se implementan 3 funciones
 ### Sandbox de ejecución: Piston API
 
 - API pública gratuita, ejecuta código en +40 lenguajes en contenedores aislados.
-- Sin infraestructura propia de contenedores — descartado por tiempo.
+- Infraestructura propia de contenedores.
 - Usada tanto en modo Code como en modo Fight.
-- Alternativa descartada por complejidad para hoy: Judge0 (mejor para test cases estructurados, pero no necesario si el LLM evalúa sobre el stdout/stderr crudo).
 
 ### Testing
 
 - **Pytest** en el backend, cubriendo al menos:
   - Camino feliz: submission correcta → score alto.
   - Caso de error: código que falla en ejecución → manejo correcto sin caída del servicio.
-- Requisito obligatorio explícito de las bases del hackathon (Release final).
 
 ### Deploy
 
 - **Backend:** Render
 - **Frontend:** Vercel
-- **URL**
+- **URL:**
 
 ## Setup Local
 
@@ -150,6 +156,25 @@ Abre [http://localhost:3000](http://localhost:3000).
 
 ### Backend
 
+Requisitos: Python 3.10 o superior.
+
+En otra terminal, desde la raíz del repositorio, ejecuta:
+
+```powershell
+cd backend
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+El backend estará disponible en:
+
+- API: [http://localhost:8000](http://localhost:8000)
+- Health check: [http://localhost:8000/health](http://localhost:8000/health)
+- Documentación Swagger: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+Las variables opcionales de Supabase y Gemini pueden configurarse en `backend/.env`.
 
 
 ## Integrantes & Roles: 
