@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Zap, Phone } from "lucide-react";
 import { GithubIcon } from "@/components/common/Icons";
+import { supabase } from "@/lib/supabase-client";
 
 export default function LoginPage() {
-  const router = useRouter();
-
-  const handleSignIn = () => {
-    router.push("/dashboard");
+  const handleSignIn = (provider: "google" | "github") => {
+    supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/dashboard` },
+    });
   };
 
   return (
@@ -36,7 +37,7 @@ export default function LoginPage() {
 
         <div className="mt-8 flex flex-col gap-3">
           <button
-            onClick={handleSignIn}
+            onClick={() => handleSignIn("google")}
             className="flex w-full items-center justify-center gap-3 rounded-xl border border-neutral-300 bg-white py-3 px-4 text-sm font-semibold text-neutral-800 shadow-sm transition hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -61,7 +62,7 @@ export default function LoginPage() {
           </button>
 
           <button
-            onClick={handleSignIn}
+            onClick={() => handleSignIn("github")}
             className="flex w-full items-center justify-center gap-3 rounded-xl border border-neutral-300 bg-white py-3 px-4 text-sm font-semibold text-neutral-800 shadow-sm transition hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
           >
             <GithubIcon className="h-5 w-5 text-neutral-900 dark:text-white" />
@@ -69,11 +70,12 @@ export default function LoginPage() {
           </button>
 
           <button
-            onClick={handleSignIn}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-neutral-300 bg-white py-3 px-4 text-sm font-semibold text-neutral-800 shadow-sm transition hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
+            disabled
+            title="Próximamente: requiere proveedor SMS configurado en Supabase"
+            className="flex w-full cursor-not-allowed items-center justify-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 py-3 px-4 text-sm font-semibold text-neutral-400 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-600"
           >
-            <Phone className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
-            Continuar con teléfono
+            <Phone className="h-4 w-4" />
+            Continuar con teléfono (próximamente)
           </button>
         </div>
 

@@ -2,25 +2,33 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Users, CheckCircle2, ArrowRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { apiClient } from "@/lib/api-client";
 
 export default function ProjectInvitePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const projectId = (params?.projectId as string) || "proj-1";
+  const inviteToken = searchParams.get("token") ?? "";
 
   const { getProject, user } = useApp();
   const project = getProject(projectId);
 
   const [joined, setJoined] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleJoin = () => {
-    setJoined(true);
-    setTimeout(() => {
-      router.push(`/projects/${projectId}`);
-    }, 1200);
+  const handleJoin = async () => {
+    setError(null);
+    try {
+      await apiClient.post(`/projects/${projectId}/join`, { invite_token: inviteToken });
+      setJoined(true);
+      setTimeout(() => router.push(`/projects/${projectId}`), 1200);
+    } catch {
+      setError("No se pudo unir al proyecto. El enlace de invitación puede ser inválido.");
+    }
   };
 
   return (
@@ -59,6 +67,12 @@ export default function ProjectInvitePage() {
             </span>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-3 rounded-xl bg-rose-50 py-2 text-sm font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+            {error}
+          </div>
+        )}
 
         {joined ? (
           <div className="flex items-center justify-center gap-2 rounded-xl bg-emerald-50 py-3 text-sm font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">

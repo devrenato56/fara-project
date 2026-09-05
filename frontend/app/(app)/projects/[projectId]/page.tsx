@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -17,32 +17,36 @@ import {
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { InviteTeamModal } from "@/components/projects/InviteTeamModal";
+import { supabase } from "@/lib/supabase-client";
 
 export default function ProjectDetailPage() {
   const params = useParams();
   const projectId = (params?.projectId as string) || "proj-1";
-  const { getProject, getProblems } = useApp();
+  const { getProject, getProblems, fetchProject } = useApp();
 
   const [isInviteOpen, setIsInviteOpen] = useState(false);
 
-  const project = getProject(projectId) || {
-    id: projectId,
-    name: "API de Tareas",
-    description: "Backend de gestión de tareas en Go con Gin y arquitectura limpia.",
-    repositories: [
-      { id: "1", fullName: "usuario/api-tareas", url: "https://github.com/usuario/api-tareas", stars: 14 },
-      { id: "2", fullName: "usuario/auth-service", url: "https://github.com/usuario/auth-service", stars: 28 },
-      { id: "3", fullName: "usuario/utils", url: "https://github.com/usuario/utils", stars: 5 },
-    ],
-    technologies: ["Go", "Docker", "PostgreSQL"],
-    members: [],
-    problemsCount: 12,
-    completedCount: 8,
-    progressPercent: 67,
-    inviteToken: "inv_fara_task_api_99x",
-  };
+  useEffect(() => {
+    fetchProject(projectId);
 
+    // Si se entra a la pantalla mientras la generacion sigue corriendo,
+    // vuelve a pedir el detalle cuando llegue el evento de Realtime.
+    const channel = supabase
+      .channel(`project:${projectId}`)
+      .on("broadcast", { event: "problems.ready" }, () => fetchProject(projectId))
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [projectId]);
+
+  const project = getProject(projectId);
   const problems = getProblems(projectId);
+
+  if (!project) {
+    return <div className="p-8 text-sm text-neutral-500">Cargando proyecto...</div>;
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {

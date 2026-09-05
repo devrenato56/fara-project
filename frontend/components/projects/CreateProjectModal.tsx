@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, GitBranch, Check, Sparkles } from "lucide-react";
 import { LoadingState } from "@/components/common/LoadingState";
 import { useApp } from "@/context/AppContext";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase-client";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -39,6 +40,23 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [selectedTechs, setSelectedTechs] = useState<string[]>(["Go", "Docker"]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
+  const [problemsReady, setProblemsReady] = useState(false);
+
+  // Escucha el evento problems.ready/failed que publica el backend por
+  // Supabase Realtime cuando termina la generacion (ADR-01).
+  useEffect(() => {
+    if (!createdProjectId) return;
+
+    const channel = supabase
+      .channel(`project:${createdProjectId}`)
+      .on("broadcast", { event: "problems.ready" }, () => setProblemsReady(true))
+      .on("broadcast", { event: "problems.failed" }, () => setProblemsReady(true))
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [createdProjectId]);
 
   if (!isOpen) return null;
 
@@ -70,13 +88,12 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     setCreatedProjectId(newProject.id);
   };
 
-  const handleGenerationComplete = () => {
+  useEffect(() => {
+    if (!problemsReady || !createdProjectId) return;
     setIsGenerating(false);
     onClose();
-    if (createdProjectId) {
-      router.push(`/projects/${createdProjectId}`);
-    }
-  };
+    router.push(`/projects/${createdProjectId}`);
+  }, [problemsReady, createdProjectId]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-fade-in">
@@ -85,8 +102,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
           <LoadingState
             title="Generando tus problemas..."
             subtitle="Analizando tu código en repositorios y creando ejercicios personalizados para ti."
-            durationMs={2800}
-            onComplete={handleGenerationComplete}
+            targetPercent={90}
+            durationMs={4000}
           />
         ) : (
           <>

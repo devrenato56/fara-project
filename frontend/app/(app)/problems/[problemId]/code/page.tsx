@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -13,6 +13,14 @@ import { CodeEditor } from "@/components/code-editor/CodeEditor";
 import { ResultCard } from "@/components/common/ResultCard";
 import { LoadingState } from "@/components/common/LoadingState";
 import { useApp } from "@/context/AppContext";
+import { apiClient } from "@/lib/api-client";
+import { mapProblem } from "@/lib/mappers";
+
+const RUNTIME_VERSIONS: Record<string, string> = {
+  go: "1.16.2",
+  python: "3.10.0",
+  javascript: "20.11.1",
+};
 
 export default function ProblemCodeModePage() {
   const params = useParams();
@@ -20,7 +28,15 @@ export default function ProblemCodeModePage() {
   const problemId = (params?.problemId as string) || "prob-1";
   const { getProblem, getProject } = useApp();
 
-  const problem = getProblem(problemId) || {
+  const [fetchedProblem, setFetchedProblem] = useState<ReturnType<typeof mapProblem> | null>(null);
+  useEffect(() => {
+    apiClient
+      .get<any>(`/problems/${problemId}`)
+      .then((data) => setFetchedProblem(mapProblem(data)))
+      .catch(() => {});
+  }, [problemId]);
+
+  const problem = fetchedProblem || getProblem(problemId) || {
     id: problemId,
     projectId: "proj-1",
     title: "Autenticación JWT",
@@ -96,12 +112,20 @@ func main() {
     problem.starterCode?.go || "// Escribe tu código aquí...\n"
   );
   const [status, setStatus] = useState<"editing" | "evaluating" | "result">("editing");
+  const [result, setResult] = useState<{ score: number; feedback: string; status: string } | null>(null);
 
-  const handleSendSolution = () => {
+  const handleSendSolution = async () => {
     setStatus("evaluating");
-  };
-
-  const handleEvaluationComplete = () => {
+    try {
+      const submission = await apiClient.post<any>(`/problems/${problem.id}/submissions`, {
+        code,
+        language,
+        version: RUNTIME_VERSIONS[language] ?? RUNTIME_VERSIONS.go,
+      });
+      setResult({ score: submission.score, feedback: submission.feedback, status: submission.status });
+    } catch {
+      setResult({ score: 0, feedback: "No se pudo evaluar el envío. Intenta de nuevo.", status: "failed" });
+    }
     setStatus("result");
   };
 
@@ -184,15 +208,15 @@ func main() {
         <LoadingState
           title="Evaluando tu solución..."
           subtitle="Ejecutando código en Piston y analizando cumplimiento de requisitos con el Agente Evaluador."
-          durationMs={2200}
-          onComplete={handleEvaluationComplete}
+          targetPercent={95}
+          durationMs={3000}
         />
-      ) : status === "result" ? (
+      ) : status === "result" && result ? (
         <ResultCard
           mode="solo"
-          outcome="won"
-          userScore={92}
-          userFeedback="Excelente implementación. Tu manejo de middleware en Gin y extracción de claims es idiomático y sólido."
+          outcome={result.status === "passed" ? "won" : "lost"}
+          userScore={result.score}
+          userFeedback={result.feedback}
           onRetry={() => setStatus("editing")}
           onNextProblem={() => router.push(`/projects/${project.id}`)}
           onViewSolution={() => setStatus("editing")}
@@ -288,9 +312,9 @@ func main() {
                   onChange={(e) => setLanguage(e.target.value)}
                   className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-mono text-xs font-semibold text-neutral-800 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                 >
-                  <option value="go">Go 1.22</option>
-                  <option value="python">Python 3.11</option>
-                  <option value="typescript">TypeScript</option>
+                  <option value="go">Go 1.16</option>
+                  <option value="python">Python 3.10</option>
+                  <option value="javascript">JavaScript (Node 20)</option>
                 </select>
               </div>
             </div>

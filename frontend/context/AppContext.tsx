@@ -1,19 +1,11 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import {
-  User,
-  Organization,
-  Project,
-  Problem,
-  Plan,
-} from "@/types";
-import {
-  MOCK_USER,
-  MOCK_ORGANIZATIONS,
-  MOCK_PROJECTS,
-  MOCK_PROBLEMS,
-} from "@/lib/mock-data";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { User, Organization, Project, Problem, Plan } from "@/types";
+import { supabase } from "@/lib/supabase-client";
+import { apiClient } from "@/lib/api-client";
+import { mapOrganization, mapProject, mapProblem, fetchProjectMembers } from "@/lib/mappers";
 
 interface AppContextType {
   user: User;
@@ -21,7 +13,7 @@ interface AppContextType {
   organizations: Organization[];
   projects: Project[];
   switchOrg: (orgId: string) => void;
-  createOrg: (name: string) => Organization;
+  createOrg: (name: string) => Promise<Organization>;
   createProject: (data: {
     name: string;
     description?: string;
@@ -29,6 +21,7 @@ interface AppContextType {
     technologies: string[];
   }) => Promise<Project>;
   getProject: (id: string) => Project | undefined;
+  fetchProject: (id: string) => Promise<void>;
   getProblems: (projectId: string) => Problem[];
   getProblem: (problemId: string) => Problem | undefined;
   setPlan: (plan: Plan) => void;
@@ -36,54 +29,95 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const PUBLIC_PATHS = ["/", "/login"];
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const savedPlan = localStorage.getItem("fara_user_plan") as Plan;
-        if (savedPlan) return { ...MOCK_USER, plan: savedPlan };
-      } catch {
-        // Ignore
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [currentOrgId, setCurrentOrgId] = useState<string>("");
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [problemsMap, setProblemsMap] = useState<Record<string, Problem[]>>({});
+
+  // Sesion de Supabase Auth -> perfil publico (public.users)
+  useEffect(() => {
+    const loadUser = async (authUser: NonNullable<Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"]> | null) => {
+      if (!authUser) {
+        setUser(null);
+        setAuthChecked(true);
+        return;
       }
+      const { data: profile } = await supabase
+        .from("users")
+        .select("username, avatar_url, streak_days, plan")
+        .eq("id", authUser.id)
+        .single();
+
+      setUser({
+        id: authUser.id,
+        username: profile?.username ?? authUser.email?.split("@")[0] ?? "usuario",
+        email: authUser.email ?? "",
+        avatarUrl: profile?.avatar_url ?? undefined,
+        streakDays: profile?.streak_days ?? 0,
+        provider: (authUser.app_metadata?.provider as User["provider"]) ?? "github",
+        plan: (profile?.plan as Plan) ?? "npc",
+      });
+      setAuthChecked(true);
+    };
+
+    supabase.auth.getUser().then(({ data }) => loadUser(data.user));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      loadUser(session?.user ?? null);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // Guard minimo: sin sesion, afuera de rutas publicas -> login
+  useEffect(() => {
+    if (!authChecked) return;
+    if (!user && !PUBLIC_PATHS.includes(pathname)) {
+      router.push("/login");
     }
-    return MOCK_USER;
-  });
-  const [organizations, setOrganizations] = useState<Organization[]>(MOCK_ORGANIZATIONS);
-  const [currentOrgId, setCurrentOrgId] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const savedOrg = localStorage.getItem("fara_current_org");
-        if (savedOrg) return savedOrg;
-      } catch {
-        // Ignore
+  }, [authChecked, user, pathname, router]);
+
+  // Organizaciones del usuario (auto-crea una si no tiene ninguna)
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      let orgs = (await apiClient.get<any[]>("/organizations")).map(mapOrganization);
+      if (orgs.length === 0) {
+        const created = mapOrganization(
+          await apiClient.post<any>("/organizations", { name: `${user.username}'s org` })
+        );
+        orgs = [created];
       }
-    }
-    return "org-1";
-  });
-  const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS);
-  const [problemsMap, setProblemsMap] = useState<Record<string, Problem[]>>(MOCK_PROBLEMS);
+      setOrganizations(orgs);
+      setCurrentOrgId((prev) => prev || orgs[0].id);
+    })();
+  }, [user]);
+
+  const fetchProjects = useCallback(async (orgId: string) => {
+    const data = await apiClient.get<any[]>(`/projects?org_id=${orgId}`);
+    setProjects(data.map((p) => mapProject(p)));
+  }, []);
+
+  useEffect(() => {
+    if (currentOrgId) fetchProjects(currentOrgId);
+  }, [currentOrgId, fetchProjects]);
 
   const currentOrg =
-    organizations.find((o) => o.id === currentOrgId) || organizations[0];
+    organizations.find((o) => o.id === currentOrgId) || organizations[0] || { id: "", name: "..." };
 
-  const switchOrg = (orgId: string) => {
-    setCurrentOrgId(orgId);
-    try {
-      localStorage.setItem("fara_current_org", orgId);
-    } catch {
-      // Ignore
-    }
-  };
+  const switchOrg = (orgId: string) => setCurrentOrgId(orgId);
 
-  const createOrg = (name: string): Organization => {
-    const newOrg: Organization = {
-      id: `org-${Date.now()}`,
-      name,
-      ownerId: user.id,
-    };
-    setOrganizations((prev) => [...prev, newOrg]);
-    setCurrentOrgId(newOrg.id);
-    return newOrg;
+  const createOrg = async (name: string): Promise<Organization> => {
+    const created = mapOrganization(await apiClient.post<any>("/organizations", { name }));
+    setOrganizations((prev) => [...prev, created]);
+    setCurrentOrgId(created.id);
+    return created;
   };
 
   const createProject = async (data: {
@@ -92,111 +126,66 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     repositories: string[];
     technologies: string[];
   }): Promise<Project> => {
-    // Simular delay de análisis agéntico si se llama desde el frontend
-    const newProj: Project = {
-      id: `proj-${Date.now()}`,
-      orgId: currentOrg.id,
-      name: data.name,
-      description: data.description || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: "Recién creado",
-      inviteToken: `inv_fara_${Math.random().toString(36).substring(2, 9)}`,
-      repositories: data.repositories.map((repo, i) => ({
-        id: `repo-${Date.now()}-${i}`,
-        fullName: repo,
-        url: `https://github.com/${repo}`,
-        stars: Math.floor(Math.random() * 50) + 1,
-      })),
-      technologies: data.technologies,
-      members: [
-        {
-          id: `mem-${Date.now()}`,
-          projectId: `proj-${Date.now()}`,
-          userId: user.id,
-          username: user.username,
-          avatarUrl: user.avatarUrl,
-          isExternal: false,
-          joinedAt: new Date().toISOString(),
-        },
-      ],
-      problemsCount: 4,
-      completedCount: 0,
-      progressPercent: 0,
-    };
-
-    // Generar problemas mock adaptados a las tecnologías seleccionadas
-    const generatedProblems: Problem[] = [
-      {
-        id: `prob-${Date.now()}-1`,
-        projectId: newProj.id,
-        title: `Migración de Servicios en ${data.technologies[0] || "Go"}`,
-        description: `Adapta la arquitectura base del repositorio ${data.repositories[0] || "proyecto"} hacia ${data.technologies[0] || "Go"}.`,
-        sourceUrl: `https://github.com/${data.repositories[0] || "repo"}/blob/main/service.py`,
-        difficulty: "medium",
-        status: "pending",
-        transferableConcepts: ["Lógica de negocio", "Mapeo de rutas"],
-        newConcepts: ["Sintaxis idiomática", "Manejo de errores"],
-        adaptableTo: data.technologies,
-      },
-      {
-        id: `prob-${Date.now()}-2`,
-        projectId: newProj.id,
-        title: `Optimización de consultas y persistencia`,
-        description: `Reescribe el acceso a datos aplicando buenas prácticas del nuevo stack.`,
-        sourceUrl: `https://github.com/${data.repositories[0] || "repo"}/blob/main/db.py`,
-        difficulty: "hard",
-        status: "pending",
-        transferableConcepts: ["Esquemas relacionales", "Transacciones"],
-        newConcepts: ["Connection pooling", "ORM nativo"],
-        adaptableTo: data.technologies,
-      },
-    ];
-
-    setProjects((prev) => [newProj, ...prev]);
-    setProblemsMap((prev) => ({
-      ...prev,
-      [newProj.id]: generatedProblems,
-    }));
-
-    return newProj;
+    const created = mapProject(
+      await apiClient.post<any>("/projects", {
+        org_id: currentOrg.id,
+        name: data.name,
+        description: data.description || null,
+        repos: data.repositories,
+        technologies: data.technologies,
+      })
+    );
+    setProjects((prev) => [created, ...prev]);
+    // Dispara la generacion en background; el modal escucha el canal Realtime.
+    apiClient.post(`/projects/${created.id}/generate-problems`).catch(() => {});
+    return created;
   };
 
-  const getProject = (id: string) => {
-    return projects.find((p) => p.id === id);
+  const fetchProject = async (id: string) => {
+    const detail = await apiClient.get<any>(`/projects/${id}`);
+    const problems = (detail.problems ?? []).map(mapProblem);
+    const members = await fetchProjectMembers(id);
+    const project = { ...mapProject(detail, problems), members };
+
+    setProjects((prev) => {
+      const exists = prev.some((p) => p.id === id);
+      return exists ? prev.map((p) => (p.id === id ? project : p)) : [...prev, project];
+    });
+    setProblemsMap((prev) => ({ ...prev, [id]: problems }));
   };
 
-  const getProblems = (projectId: string) => {
-    return problemsMap[projectId] || [];
-  };
+  const getProject = (id: string) => projects.find((p) => p.id === id);
+
+  const getProblems = (projectId: string) => problemsMap[projectId] || [];
 
   const getProblem = (problemId: string) => {
-    for (const pList of Object.values(problemsMap)) {
-      const found = pList.find((p) => p.id === problemId);
+    for (const list of Object.values(problemsMap)) {
+      const found = list.find((p) => p.id === problemId);
       if (found) return found;
     }
     return undefined;
   };
 
   const setPlan = (plan: Plan) => {
-    setUser((prev) => ({ ...prev, plan }));
-    try {
-      localStorage.setItem("fara_user_plan", plan);
-    } catch {
-      // Ignore
-    }
+    if (user) setUser({ ...user, plan });
   };
+
+  if (!authChecked || (!user && !PUBLIC_PATHS.includes(pathname))) {
+    return null;
+  }
 
   return (
     <AppContext.Provider
       value={{
-        user,
+        user: user ?? ({} as User),
         currentOrg,
         organizations,
-        projects: projects.filter((p) => p.orgId === currentOrg.id),
+        projects,
         switchOrg,
         createOrg,
         createProject,
         getProject,
+        fetchProject,
         getProblems,
         getProblem,
         setPlan,
