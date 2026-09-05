@@ -2,8 +2,7 @@
 # Genera el guion completo (buggy -> correccion -> limpio) de la solucion de
 # la IA para el modo Fight vs IA, antes de iniciar el timer (ADR-07, Fase 4).
 
-from app.services.json_llm import parse_json_object
-from app.services.llm import generate
+from app.services.llm import LLMUnavailableError, generate_json_object
 
 # Calibracion por nivel: cuanto mas novato el usuario, mas pausada va la IA y
 # mas errores deliberados comete sobre los conceptos nuevos del problema.
@@ -56,11 +55,11 @@ async def generar_solucion_progresiva(problema: dict, nivel: str = "medium", tec
         segundos=config["segundos"],
     )
 
-    result = parse_json_object(await generate(prompt))
+    result = await generate_json_object(prompt)
 
     steps = result.get("steps") or []
     if not steps:
-        raise ValueError("El guion generado no tiene pasos")
+        raise LLMUnavailableError("El guion generado no tiene pasos")
 
     return {
         "steps": steps,

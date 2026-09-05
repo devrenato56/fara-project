@@ -2,8 +2,7 @@
 # Dado el codigo de un repo y las tecnologias objetivo del proyecto, identifica
 # los fragmentos con mayor potencial de traduccion (Fase 2).
 
-from app.services.json_llm import parse_json_array
-from app.services.llm import generate
+from app.services.llm import generate_json_array
 
 MAX_FRAGMENTS = 5
 
@@ -40,5 +39,4 @@ async def analizar_repo(codigo_por_archivo: dict[str, str], tecnologias: list[st
         max_fragmentos=MAX_FRAGMENTS,
         archivos=_format_archivos(codigo_por_archivo),
     )
-    response_text = await generate(prompt)
-    return parse_json_array(response_text)
+    return await generate_json_array(prompt)

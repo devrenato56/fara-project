@@ -6,6 +6,7 @@ from google import genai
 from google.genai import errors as genai_errors
 
 from app.core.config import get_settings
+from app.services.json_llm import parse_json_array, parse_json_object
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ _client: genai.Client | None = None
 
 MAX_ATTEMPTS = 3
 BACKOFF_SEC = 2
+RATE_LIMIT_BACKOFF_SEC = 10
 
 
 class LLMUnavailableError(Exception):
@@ -41,8 +43,38 @@ async def generate(prompt: str, model: str = "gemini-3.6-flash") -> str:
         except (httpx.TransportError, genai_errors.ServerError) as exc:
             # Cortes de red y 5xx del proveedor: son transitorios, reintentamos.
             last_error = exc
-            logger.warning("LLM intento %s/%s fallo: %s", attempt, MAX_ATTEMPTS, exc)
-            if attempt < MAX_ATTEMPTS:
-                await asyncio.sleep(BACKOFF_SEC * attempt)
+            wait = BACKOFF_SEC * attempt
+        except genai_errors.ClientError as exc:
+            if exc.code != 429:
+                # El resto de los 4xx (400, 403...) son error nuestro: no
+                # tiene sentido reintentar 3 veces el mismo prompt invalido.
+                # Igual se traduce a LLMUnavailableError, para que a quien
+                # llama a generate() le alcance con un unico except.
+                raise LLMUnavailableError(str(exc)) from exc
+            # 429 (rate limit) es transitorio y se beneficia de esperar mas.
+            last_error = exc
+            wait = RATE_LIMIT_BACKOFF_SEC * attempt
+
+        logger.warning("LLM intento %s/%s fallo: %s", attempt, MAX_ATTEMPTS, last_error)
+        if attempt < MAX_ATTEMPTS:
+            await asyncio.sleep(wait)
 
     raise LLMUnavailableError(str(last_error)) from last_error
+
+
+async def generate_json_object(prompt: str, model: str = "gemini-3.6-flash") -> dict:
+    """generate() + parseo a objeto, traduciendo un JSON mal formado del
+    modelo al mismo LLMUnavailableError -- para el llamador es un unico
+    tipo de falla, responda lo que responda el proveedor."""
+    try:
+        return parse_json_object(await generate(prompt, model))
+    except (ValueError, KeyError) as exc:
+        raise LLMUnavailableError(f"Respuesta no parseable del LLM: {exc}") from exc
+
+
+async def generate_json_array(prompt: str, model: str = "gemini-3.6-flash") -> list[dict]:
+    """Idem generate_json_object(), para respuestas que son un array."""
+    try:
+        return parse_json_array(await generate(prompt, model))
+    except (ValueError, KeyError) as exc:
+        raise LLMUnavailableError(f"Respuesta no parseable del LLM: {exc}") from exc

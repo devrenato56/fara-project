@@ -2,8 +2,7 @@
 # A partir de los fragmentos identificados por el Agente Matching, genera el
 # problema equivalente junto a los conceptos transferibles/nuevos (Fase 2).
 
-from app.services.json_llm import parse_json_array
-from app.services.llm import generate
+from app.services.llm import generate_json_array
 
 _PROMPT_TEMPLATE = """Sos disenador de ejercicios de programacion. A partir de estos fragmentos de \
 codigo real (con sus conceptos transferibles/nuevos ya identificados), generame un problema de \
@@ -46,5 +45,4 @@ async def generar_ejercicios(fragmentos: list[dict], tecnologias: list[str]) -> 
         tecnologias=", ".join(tecnologias),
         fragmentos=_format_fragmentos(fragmentos),
     )
-    response_text = await generate(prompt)
-    return parse_json_array(response_text)
+    return await generate_json_array(prompt)
