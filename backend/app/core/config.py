@@ -12,6 +12,8 @@ class Settings(BaseSettings):
 
     gemini_api_key: str = ""
 
+    github_token: str = ""
+
     piston_api_url: str = "https://emkc.org/api/v2/piston"
 
     cors_origins: list[str] = [
