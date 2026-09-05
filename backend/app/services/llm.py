@@ -28,7 +28,7 @@ def _get_client() -> genai.Client:
     return _client
 
 
-async def generate(prompt: str, model: str = "gemini-3.6-flash") -> str:
+async def generate(prompt: str, model: str = "gemini-1.5-flash") -> str:
     """Llamada al LLM orquestador (Gemini), con reintentos ante fallos transitorios.
 
     Es el unico punto por el que pasan los 4 agentes, asi que el reintento vive
@@ -62,7 +62,7 @@ async def generate(prompt: str, model: str = "gemini-3.6-flash") -> str:
     raise LLMUnavailableError(str(last_error)) from last_error
 
 
-async def generate_json_object(prompt: str, model: str = "gemini-3.6-flash") -> dict:
+async def generate_json_object(prompt: str, model: str = "gemini-1.5-flash") -> dict:
     """generate() + parseo a objeto, traduciendo un JSON mal formado del
     modelo al mismo LLMUnavailableError -- para el llamador es un unico
     tipo de falla, responda lo que responda el proveedor."""
@@ -72,7 +72,7 @@ async def generate_json_object(prompt: str, model: str = "gemini-3.6-flash") -> 
         raise LLMUnavailableError(f"Respuesta no parseable del LLM: {exc}") from exc
 
 
-async def generate_json_array(prompt: str, model: str = "gemini-3.6-flash") -> list[dict]:
+async def generate_json_array(prompt: str, model: str = "gemini-1.5-flash") -> list[dict]:
     """Idem generate_json_object(), para respuestas que son un array."""
     try:
         return parse_json_array(await generate(prompt, model))
