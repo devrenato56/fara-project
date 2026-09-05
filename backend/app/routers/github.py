@@ -15,24 +15,21 @@ class GitHubRepo(BaseModel):
     stargazers_count: int
     language: str | None = None
 
-@router.get("/search", response_model=List[GitHubRepo])
-async def search_repositories(
-    q: str = Query(..., min_length=2),
+@router.get("/my-repos", response_model=List[GitHubRepo])
+async def get_my_repositories(
+    username: str = Query(..., min_length=1),
     user: CurrentUser = Depends(get_current_user)
 ) -> List[GitHubRepo]:
-    """Search for public GitHub repositories."""
+    """Fetch public GitHub repositories for a given username."""
     async with httpx.AsyncClient(timeout=10.0, headers=_headers()) as client:
         try:
-            # Using the GitHub Search API
-            # Note: We restrict to reasonable parameters, e.g., sort by stars
             resp = await client.get(
-                "https://api.github.com/search/repositories",
-                params={"q": q, "sort": "stars", "order": "desc", "per_page": 10}
+                f"https://api.github.com/users/{username}/repos",
+                params={"sort": "updated", "per_page": 30}
             )
             resp.raise_for_status()
-            data = resp.json()
+            items = resp.json()
             
-            items = data.get("items", [])
             repos = []
             for item in items:
                 repos.append(
@@ -48,5 +45,5 @@ async def search_repositories(
         except httpx.HTTPError as exc:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Error searching GitHub repositories: {exc}"
+                detail=f"Error fetching GitHub repositories: {exc}"
             )

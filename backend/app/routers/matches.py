@@ -90,6 +90,10 @@ async def create_match(body: MatchCreate, user: CurrentUser = Depends(get_curren
             }
         )
     else:
+        if body.opponent_user_id:
+            from app.core.access import require_org_member
+            require_org_member(body.opponent_user_id, project["org_id"])
+            row["opponent_user_id"] = body.opponent_user_id
         row["status"] = "waiting_opponent"
 
     result = supabase.table("matches").insert(row).execute()
@@ -100,7 +104,7 @@ async def create_match(body: MatchCreate, user: CurrentUser = Depends(get_curren
     if body.opponent_type == "ai":
         realtime.publish(f"match:{match['id']}", "match.started", {"match_id": match["id"]})
     else:
-        # La sala queda anunciada en el canal del proyecto, para quien tenga el enlace.
+        # La sala queda anunciada en el canal del proyecto, para quien tenga el enlace o este asignado.
         realtime.publish(
             f"project:{project['id']}",
             "match.created",
@@ -108,9 +112,9 @@ async def create_match(body: MatchCreate, user: CurrentUser = Depends(get_curren
                 "match_id": match["id"],
                 "problem_id": body.problem_id,
                 "challenger_id": user.id,
+                "opponent_user_id": body.opponent_user_id
             },
         )
-
     return MatchOut(**match)
 
 

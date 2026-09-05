@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class MatchCreate(BaseModel):
     problem_id: str
     opponent_type: Literal["ai", "human"]
+    opponent_user_id: str | None = None
     technology: str = "Go"
     level: Literal["easy", "medium", "hard"] = "medium"
 
