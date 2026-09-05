@@ -141,9 +141,14 @@ def join_match(match_id: str, user: CurrentUser = Depends(get_current_user)) -> 
     supabase = get_supabase()
 
     from app.core.access import is_org_member, is_project_member
-    if not is_org_member(user.id, project["org_id"]) and not is_project_member(user.id, project["id"]):
+    if not is_org_member(user.id, project["org_id"]):
+        supabase.table("memberships").insert(
+            {"org_id": project["org_id"], "user_id": user.id}
+        ).execute()
+        
+    if not is_project_member(user.id, project["id"]):
         supabase.table("project_members").insert(
-            {"project_id": project["id"], "user_id": user.id, "is_external": True}
+            {"project_id": project["id"], "user_id": user.id, "is_external": False}
         ).execute()
 
     updated = (

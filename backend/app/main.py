@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.routers import auth, matches, organizations, problems, projects, submissions
+from app.routers import auth, github, matches, organizations, problems, projects, submissions
 
 settings = get_settings()
 
@@ -26,6 +26,7 @@ app.include_router(projects.router)
 app.include_router(problems.router)
 app.include_router(submissions.router)
 app.include_router(matches.router)
+app.include_router(github.router)
 
 
 @app.get("/health")
