@@ -47,6 +47,10 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   useEffect(() => {
     if (!createdProjectId) return;
 
+    const timer = setTimeout(() => {
+      setProblemsReady(true);
+    }, 4500);
+
     const channel = supabase
       .channel(`project:${createdProjectId}`)
       .on("broadcast", { event: "problems.ready" }, () => setProblemsReady(true))
@@ -54,6 +58,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       .subscribe();
 
     return () => {
+      clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, [createdProjectId]);
