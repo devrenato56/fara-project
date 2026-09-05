@@ -1,26 +1,37 @@
-from fastapi import Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
+from supabase import Client
 
 from app.db.supabase import get_supabase
 
 
-class CurrentUser:
-    def __init__(self, id: str, email: str | None):
-        self.id = id
-        self.email = email
-
-
-async def get_current_user(authorization: str | None = Header(default=None)) -> CurrentUser:
-    """Valida el JWT de Supabase Auth enviado por el frontend (`Authorization: Bearer <token>`)."""
+def get_current_user_id(
+    authorization: str | None = Header(default=None),
+    supabase: Client = Depends(get_supabase),
+) -> str:
+    """Extrae el user_id a partir del JWT de Supabase enviado en el header
+    `Authorization: Bearer <token>`. El frontend obtiene ese token de
+    `supabase.auth.getSession()` (ver lib/supabase-client.ts).
+    """
     if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Falta el header Authorization con el token de Supabase",
+        )
 
-    token = authorization.split(" ", 1)[1]
+    token = authorization.split(" ", 1)[1].strip()
+
     try:
-        response = get_supabase().auth.get_user(token)
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
+        auth_response = supabase.auth.get_user(token)
+    except Exception as exc:  # credenciales invalidas, token expirado, etc.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalido o expirado",
+        ) from exc
 
-    if response is None or response.user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    if auth_response is None or auth_response.user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalido o expirado",
+        )
 
-    return CurrentUser(id=response.user.id, email=response.user.email)
+    return auth_response.user.id
