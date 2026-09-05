@@ -34,6 +34,11 @@ Profesionales de software (principalmente junior) que necesitan adquirir rápida
 * Cambio de equipo o de proyecto.
 * Nuevas exigencias del mercado laboral.
 
+Perfil Junior: 
+* Dominio real de al menos 1 stack tecnológico completo (ej. Python + DJango)
+* Conocimiento superficial o nulo de la tecnología a la que desea migrar. 
+* Con proyectos o repos propios (min. 5)
+
 ### Usuario objetivo
 **Model: B2C**
 
