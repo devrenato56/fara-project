@@ -46,14 +46,14 @@ Premium:
 
 ### MVP
 
-El MVP se enfoca en transformar el código real del usuario en un ejercicio equivalente en la tecnología objetivo.
+El MVP se enfoca en **una sola cosa**: transformar código real del usuario en un ejercicio equivalente en la tecnología objetivo.
 
-1. Entrada: el usuario sube un fragmento de código o lo trae desde GitHub.
-2. Matching: un agente identifica qué parte de ese código tiene potencial de traducirse a la tecnología objetivo (análisis estructural + embeddings + comparación semántica).
-3. Generación del ejercicio: se genera el mismo problema, pero en la tecnología nueva, señalando explícitamente:
-   * qué conceptos son transferibles (ej. lógica de negocio, diseño de la API), y
-   * qué conceptos son genuinamente nuevos (ej. manejo de concurrencia).
-4. Modo versus (diferencial): el usuario resuelve el ejercicio compitiendo en tiempo real contra una IA que escribe su propia solución con errores deliberados y correcciones sobre la marcha, enfocados justo en los conceptos nuevos para ese usuario.
+1. **Entrada**: el usuario conecta su cuenta de GitHub. El agente revisa sus repositorios y proyectos para encontrar fragmentos de código que sirvan como base para aprender la tecnología objetivo.
+2. **Matching**: un agente identifica qué parte de ese código tiene potencial de traducirse a la tecnología objetivo (análisis estructural + embeddings + comparación semántica).
+3. **Generación del ejercicio**: se genera el mismo problema, pero en la tecnología nueva, señalando explícitamente:
+   - qué conceptos son **transferibles** (ej. lógica de negocio, diseño de la API), y
+   - qué conceptos son **genuinamente nuevos** (ej. manejo de concurrencia).
+4. **Modo versus (diferencial)**: el usuario resuelve el ejercicio compitiendo en tiempo real contra una IA que escribe su propia solución con errores deliberados y correcciones sobre la marcha, enfocados justo en los conceptos nuevos para ese usuario.
 
 
 ## Stack Tecnológico 
