@@ -25,6 +25,7 @@ interface AppContextType {
   getProblems: (projectId: string) => Problem[];
   getProblem: (problemId: string) => Problem | undefined;
   setPlan: (plan: Plan) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -161,6 +162,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setProblemsMap((prev) => ({ ...prev, [id]: problems }));
   };
 
+  const deleteProject = async (id: string) => {
+    await apiClient.delete(`/projects/${id}`);
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    setProblemsMap((prev) => {
+      const newMap = { ...prev };
+      delete newMap[id];
+      return newMap;
+    });
+  };
+
   const getProject = (id: string) => projects.find((p) => p.id === id);
 
   const getProblems = (projectId: string) => problemsMap[projectId] || [];
@@ -200,6 +211,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getProblems,
         getProblem,
         setPlan,
+        deleteProject,
       }}
     >
       {children}

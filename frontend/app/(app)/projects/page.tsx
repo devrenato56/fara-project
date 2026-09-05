@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   FolderGit2,
   Plus,
-  MoreVertical,
+  Trash2,
   Sparkles,
   GitBranch,
   Filter,
@@ -14,7 +14,7 @@ import { useApp } from "@/context/AppContext";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 
 export default function ProjectsPage() {
-  const { projects } = useApp();
+  const { projects, deleteProject } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTechFilter, setSelectedTechFilter] = useState<string | null>(null);
   const [onlyPremium, setOnlyPremium] = useState(false);
@@ -138,12 +138,16 @@ export default function ProjectsPage() {
                     </span>
                   </div>
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.preventDefault();
+                      if (confirm("¿Estás seguro de que deseas eliminar este proyecto?")) {
+                        await deleteProject(project.id);
+                      }
                     }}
-                    className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-300 cursor-pointer"
+                    className="rounded p-1.5 text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 transition-colors cursor-pointer"
+                    title="Eliminar proyecto"
                   >
-                    <MoreVertical className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
 

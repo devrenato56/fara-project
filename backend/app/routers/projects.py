@@ -414,3 +414,12 @@ def generate_problems(
     background_tasks.add_task(_generate_problems_task, project_id)
     return {"status": "generating"}
 
+
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(project_id: str, user: CurrentUser = Depends(get_current_user)):
+    project = _get_project_or_404(project_id)
+    require_org_member(user.id, project["org_id"])
+    supabase = get_supabase()
+    supabase.table("projects").delete().eq("id", project_id).execute()
+    return None
+
