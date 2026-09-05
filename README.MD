@@ -42,12 +42,20 @@ Perfil Junior:
 ### Usuario objetivo
 **Model: B2C**
 
-Premium: 
-- Número de proyectos que puedes crear
-- Numero de organizaciones.
+Free: 
+- Limite de hasta 3 proyectos. 
+- Limite de hasta 3 organizacione.
 - Número de tecnologías por proyectos. 
-- Número de Participantes por organizaciones 
+- Solo 1 participante por organización
+- Tecnologías limitadas
+
+Premium: 
+- Número ilimitado de proyectos que puedes crear
+- Numero ilimitado de organizaciones.
+- 9 de tecnologías por proyectos. 
+- Número ilimitado de participantes por organizaciones 
 - Acceso a tecnologias nuevas. 
+
 
 ### MVP
 
@@ -94,16 +102,204 @@ Elegido por sobre Django/Flask porque:
 
 ### Base de datos: Supabase (Postgres)
 
-- Ya era decisión previa del equipo.
 - Se usa `pgvector` como extensión de la misma instancia en lugar de sumar Pinecone/Weaviate/Chroma — un solo lugar de datos, una sola conexión.
 - Supabase Auth resuelve el login social (Google/GitHub) que pide el wireframe de landing sin backend propio de autenticación.
 - Supabase Realtime reemplaza la necesidad de levantar WebSockets propios para:
   - Notificar cuando termina la generación de problemas ("Generating your problems...").
   - Sincronizar estado y timer entre dos usuarios en el modo Fight.
 
+```mermaid
+erDiagram
+
+    USERS {
+        uuid id PK
+        text username
+        text email
+        text avatar_url
+        integer streak_days
+        text plan
+        timestamptz created_at
+    }
+
+    ORGANIZATIONS {
+        uuid id PK
+        text name
+        uuid owner_id FK
+        timestamptz created_at
+    }
+
+    MEMBERSHIPS {
+        uuid id PK
+        uuid org_id FK
+        uuid user_id FK
+        timestamptz joined_at
+    }
+
+    PROJECTS {
+        uuid id PK
+        uuid org_id FK
+        text name
+        text description
+        uuid invite_token
+        timestamptz created_at
+    }
+
+    PROJECT_MEMBERS {
+        uuid id PK
+        uuid project_id FK
+        uuid user_id FK
+        boolean is_external
+        timestamptz joined_at
+    }
+
+    PROJECT_REPOS {
+        uuid id PK
+        uuid project_id FK
+        text repo_full_name
+        text repo_url
+    }
+
+    TECHNOLOGIES {
+        uuid id PK
+        text name
+        text icon_url
+        boolean is_trending
+    }
+
+    PROJECT_TECH {
+        uuid project_id PK, FK
+        uuid technology_id PK, FK
+    }
+
+    PROBLEMS {
+        uuid id PK
+        uuid project_id FK
+        text title
+        text description
+        text source_snippet
+        text source_url
+        text difficulty
+        jsonb transferable_concepts
+        jsonb new_concepts
+        text status
+        timestamptz created_at
+    }
+
+    PROBLEM_TECH {
+        uuid problem_id PK, FK
+        uuid technology_id PK, FK
+    }
+
+    MATCHES {
+        uuid id PK
+        uuid problem_id FK
+        uuid challenger_id FK
+        text opponent_type
+        uuid opponent_user_id FK
+        text status
+        integer duration_sec
+        timestamptz started_at
+        integer ai_completion_time_sec
+        jsonb ai_reveal_script
+        uuid winner_id FK
+        timestamptz created_at
+    }
+
+    SUBMISSIONS {
+        uuid id PK
+        uuid problem_id FK
+        uuid user_id FK
+        uuid match_id FK
+        text code
+        integer score
+        text feedback
+        text status
+        timestamptz created_at
+    }
+
+    CODE_EMBEDDINGS {
+        uuid id PK
+        uuid problem_id FK
+        vector embedding
+    }
+
+
+    %% =========================
+    %% USERS / ORGANIZATIONS
+    %% =========================
+
+    USERS ||--o{ ORGANIZATIONS : "owns"
+    USERS ||--o{ MEMBERSHIPS : "has"
+    ORGANIZATIONS ||--o{ MEMBERSHIPS : "has"
+
+
+    %% =========================
+    %% ORGANIZATIONS / PROJECTS
+    %% =========================
+
+    ORGANIZATIONS ||--o{ PROJECTS : "contains"
+
+    PROJECTS ||--o{ PROJECT_MEMBERS : "has"
+    USERS ||--o{ PROJECT_MEMBERS : "joins"
+
+
+    %% =========================
+    %% PROJECT REPOSITORIES
+    %% =========================
+
+    PROJECTS ||--o{ PROJECT_REPOS : "has"
+
+
+    %% =========================
+    %% PROJECT TECHNOLOGIES
+    %% =========================
+
+    PROJECTS ||--o{ PROJECT_TECH : "uses"
+    TECHNOLOGIES ||--o{ PROJECT_TECH : "belongs to"
+
+
+    %% =========================
+    %% PROBLEMS
+    %% =========================
+
+    PROJECTS ||--o{ PROBLEMS : "generates"
+
+    PROBLEMS ||--o{ PROBLEM_TECH : "requires"
+    TECHNOLOGIES ||--o{ PROBLEM_TECH : "used by"
+
+
+    %% =========================
+    %% MATCHES
+    %% =========================
+
+    PROBLEMS ||--o{ MATCHES : "is played in"
+
+    USERS ||--o{ MATCHES : "challenges"
+    USERS o|--o{ MATCHES : "opponent"
+
+    USERS o|--o{ MATCHES : "wins"
+
+
+    %% =========================
+    %% SUBMISSIONS
+    %% =========================
+
+    PROBLEMS ||--o{ SUBMISSIONS : "receives"
+    USERS ||--o{ SUBMISSIONS : "creates"
+    MATCHES o|--o{ SUBMISSIONS : "contains"
+
+
+    %% =========================
+    %% EMBEDDINGS
+    %% =========================
+
+    PROBLEMS ||--o{ CODE_EMBEDDINGS : "has"
+
+```
+
 ### LLM orquestador
 
-**Gemini 2.0 Flash** para el análisis de repos y generación de problemas:
+**Gemini 3.6 Flash** para el análisis de repos y generación de problemas:
 - Tier gratuito generoso, suficiente para la demo.
 - Contexto largo, permite mandar varios archivos de código en un solo prompt sin necesidad de embeddings/RAG para el volumen de una demo.
 
@@ -117,22 +313,20 @@ No se usan frameworks de agentes (LangChain, CrewAI). Se implementan 3 funciones
 ### Sandbox de ejecución: Piston API
 
 - API pública gratuita, ejecuta código en +40 lenguajes en contenedores aislados.
-- Sin infraestructura propia de contenedores — descartado por tiempo.
+- Infraestructura propia de contenedores.
 - Usada tanto en modo Code como en modo Fight.
-- Alternativa descartada por complejidad para hoy: Judge0 (mejor para test cases estructurados, pero no necesario si el LLM evalúa sobre el stdout/stderr crudo).
 
 ### Testing
 
 - **Pytest** en el backend, cubriendo al menos:
   - Camino feliz: submission correcta → score alto.
   - Caso de error: código que falla en ejecución → manejo correcto sin caída del servicio.
-- Requisito obligatorio explícito de las bases del hackathon (Release final).
 
 ### Deploy
 
 - **Backend:** Render
 - **Frontend:** Vercel
-- **URL**
+- **URL:**
 
 ## Setup Local
 
@@ -150,6 +344,25 @@ Abre [http://localhost:3000](http://localhost:3000).
 
 ### Backend
 
+Requisitos: Python 3.10 o superior.
+
+En otra terminal, desde la raíz del repositorio, ejecuta:
+
+```powershell
+cd backend
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+El backend estará disponible en:
+
+- API: [http://localhost:8000](http://localhost:8000)
+- Health check: [http://localhost:8000/health](http://localhost:8000/health)
+- Documentación Swagger: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+Las variables opcionales de Supabase y Gemini pueden configurarse en `backend/.env`.
 
 
 ## Integrantes & Roles: 

@@ -1,6 +1,8 @@
 from functools import lru_cache
+from typing import Annotated
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -12,11 +14,22 @@ class Settings(BaseSettings):
 
     gemini_api_key: str = ""
 
-    piston_api_url: str = "https://emkc.org/api/v2/piston"
+    github_token: str = ""
 
-    cors_origins: list[str] = [
-        "http://localhost:3000",
-    ]
+    # Publica (emkc.org) es whitelist-only desde 2/2026 -- se autohostea via
+    # backend/docker-compose.piston.yml (ver README).
+    piston_api_url: str = "http://localhost:2000/api/v2"
+
+    # En produccion se setea CORS_ORIGINS con el dominio de Vercel, separado
+    # por comas: CORS_ORIGINS=https://fara.vercel.app,http://localhost:3000
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
 
 
 @lru_cache
