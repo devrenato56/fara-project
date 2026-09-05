@@ -4,6 +4,12 @@ from supabase import Client
 from app.db.supabase import get_supabase
 
 
+class CurrentUser:
+    def __init__(self, id: str, email: str | None = None):
+        self.id = id
+        self.email = email
+
+
 def get_current_user_id(
     authorization: str | None = Header(default=None),
     supabase: Client = Depends(get_supabase),
@@ -35,3 +41,12 @@ def get_current_user_id(
         )
 
     return auth_response.user.id
+
+
+def get_current_user(
+    authorization: str | None = Header(default=None),
+    supabase: Client = Depends(get_supabase),
+) -> CurrentUser:
+    user_id = get_current_user_id(authorization, supabase)
+    return CurrentUser(id=user_id, email=None)
+

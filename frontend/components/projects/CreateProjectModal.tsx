@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, GitBranch, Check, Sparkles } from "lucide-react";
+import { X, GitBranch, Check, Sparkles, Plus, Layers, ArrowRight } from "lucide-react";
 import { LoadingState } from "@/components/common/LoadingState";
 import { useApp } from "@/context/AppContext";
 import { useRouter } from "next/navigation";
@@ -12,12 +12,12 @@ interface CreateProjectModalProps {
   onClose: () => void;
 }
 
-const AVAILABLE_REPOS = [
+const PRESET_REPOS = [
   "usuario/api-tareas",
   "usuario/auth-service",
-  "usuario/payment-processor",
-  "usuario/utils",
-  "usuario/shop-backend",
+  "gin-gonic/gin",
+  "expressjs/express",
+  "pallets/flask",
 ];
 
 const AVAILABLE_TECHS = [
@@ -27,6 +27,7 @@ const AVAILABLE_TECHS = [
   { name: "Redis", icon: "🔴" },
   { name: "Rust", icon: "🦀" },
   { name: "TypeScript", icon: "🟦" },
+  { name: "Python", icon: "🐍" },
 ];
 
 export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
@@ -35,6 +36,7 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
   const [activeProvider, setActiveProvider] = useState<"github" | "gitlab" | "bitbucket">("github");
   const [selectedRepos, setSelectedRepos] = useState<string[]>(["usuario/api-tareas"]);
+  const [customRepoInput, setCustomRepoInput] = useState("");
   const [projectName, setProjectName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedTechs, setSelectedTechs] = useState<string[]>(["Go", "Docker"]);
@@ -42,8 +44,6 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [problemsReady, setProblemsReady] = useState(false);
 
-  // Escucha el evento problems.ready/failed que publica el backend por
-  // Supabase Realtime cuando termina la generacion (ADR-01).
   useEffect(() => {
     if (!createdProjectId) return;
 
@@ -63,12 +63,27 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     };
   }, [createdProjectId]);
 
+  useEffect(() => {
+    if (!problemsReady || !createdProjectId) return;
+    setIsGenerating(false);
+    onClose();
+    router.push(`/projects/${createdProjectId}`);
+  }, [problemsReady, createdProjectId]);
+
   if (!isOpen) return null;
 
   const toggleRepo = (repo: string) => {
     setSelectedRepos((prev) =>
       prev.includes(repo) ? prev.filter((r) => r !== repo) : [...prev, repo]
     );
+  };
+
+  const handleAddCustomRepo = () => {
+    const trimmed = customRepoInput.trim();
+    if (trimmed && !selectedRepos.includes(trimmed)) {
+      setSelectedRepos((prev) => [...prev, trimmed]);
+      setCustomRepoInput("");
+    }
   };
 
   const toggleTech = (tech: string) => {
@@ -93,152 +108,197 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     setCreatedProjectId(newProject.id);
   };
 
-  useEffect(() => {
-    if (!problemsReady || !createdProjectId) return;
-    setIsGenerating(false);
-    onClose();
-    router.push(`/projects/${createdProjectId}`);
-  }, [problemsReady, createdProjectId]);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-fade-in">
-      <div className="relative w-full max-w-xl rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-neutral-200 bg-white/95 p-7 shadow-2xl transition-all dark:border-neutral-800 dark:bg-neutral-900/95 dark:shadow-neutral-950/80">
+        
+        {/* Glow ambient background effect */}
+        <div className="pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-amber-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-24 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl" />
+
         {isGenerating ? (
           <LoadingState
             title="Generando tus problemas..."
-            subtitle="Analizando tu código en repositorios y creando ejercicios personalizados para ti."
-            targetPercent={90}
+            subtitle="Analizando tu código fuente y creando ejercicios de traducción técnica adaptados a ti."
+            targetPercent={95}
             durationMs={4000}
           />
         ) : (
           <>
-            {/* Header del Modal */}
-            <div className="flex items-center justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800">
-              <h2 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white">
-                Crear nuevo proyecto
-              </h2>
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-neutral-100 pb-5 dark:border-neutral-800">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-white shadow-md dark:bg-white dark:text-neutral-900">
+                  <Layers className="h-5.5 w-5.5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black tracking-tight text-neutral-900 dark:text-white">
+                    Crear nuevo proyecto
+                  </h2>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    Vincular repositorios para generar problemas de práctica
+                  </p>
+                </div>
+              </div>
+
               <button
                 onClick={onClose}
-                className="rounded-full p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800"
+                className="rounded-full p-2 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-6">
-              {/* Paso 1: Conectar repositorios */}
-              <div>
-                <label className="text-sm font-bold text-neutral-900 dark:text-white">
-                  1. Conecta tus repositorios (obligatorio)
-                </label>
+              {/* Step 1: Conectar repositorios */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-900 text-[10px] font-black text-white dark:bg-white dark:text-neutral-900">
+                      1
+                    </span>
+                    Repositorios de Origen
+                  </label>
+                  <span className="text-[11px] font-medium text-neutral-400">
+                    {selectedRepos.length} seleccionado(s)
+                  </span>
+                </div>
 
                 {/* Tabs de Proveedores */}
-                <div className="mt-2 flex rounded-xl border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-800 dark:bg-neutral-950">
+                <div className="flex rounded-xl border border-neutral-200 bg-neutral-100/60 p-1 dark:border-neutral-800 dark:bg-neutral-950/60">
+                  {(["github", "gitlab", "bitbucket"] as const).map((provider) => (
+                    <button
+                      key={provider}
+                      type="button"
+                      onClick={() => setActiveProvider(provider)}
+                      className={`flex-1 rounded-lg py-1.5 text-xs font-bold capitalize transition ${
+                        activeProvider === provider
+                          ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-800 dark:text-white"
+                          : "text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200"
+                      }`}
+                    >
+                      {provider}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Chips de Repositorios Seleccionados */}
+                {selectedRepos.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedRepos.map((repo) => (
+                      <span
+                        key={repo}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 bg-neutral-100/80 px-3 py-1 text-xs font-mono font-semibold text-neutral-800 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      >
+                        <GitBranch className="h-3 w-3 text-neutral-400" />
+                        {repo}
+                        <button
+                          type="button"
+                          onClick={() => toggleRepo(repo)}
+                          className="ml-1 text-neutral-400 hover:text-rose-500"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Input para agregar repo personalizado */}
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <GitBranch className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+                    <input
+                      type="text"
+                      placeholder="Añadir repo (ej. owner/repository)"
+                      value={customRepoInput}
+                      onChange={(e) => setCustomRepoInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddCustomRepo();
+                        }
+                      }}
+                      className="w-full rounded-xl border border-neutral-200 bg-white py-2 pl-9 pr-3 text-xs text-neutral-900 placeholder-neutral-400 focus:border-neutral-900 focus:outline-none dark:border-neutral-800 dark:bg-neutral-950 dark:text-white dark:focus:border-white"
+                    />
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setActiveProvider("github")}
-                    className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition ${
-                      activeProvider === "github"
-                        ? "bg-white text-neutral-900 shadow-xs dark:bg-neutral-800 dark:text-white"
-                        : "text-neutral-500 hover:text-neutral-900"
-                    }`}
+                    onClick={handleAddCustomRepo}
+                    className="flex items-center gap-1 rounded-xl border border-neutral-300 bg-neutral-100 px-3 py-2 text-xs font-semibold text-neutral-800 transition hover:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                   >
-                    GitHub
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveProvider("gitlab")}
-                    className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition ${
-                      activeProvider === "gitlab"
-                        ? "bg-white text-neutral-900 shadow-xs dark:bg-neutral-800 dark:text-white"
-                        : "text-neutral-500 hover:text-neutral-900"
-                    }`}
-                  >
-                    GitLab
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveProvider("bitbucket")}
-                    className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition ${
-                      activeProvider === "bitbucket"
-                        ? "bg-white text-neutral-900 shadow-xs dark:bg-neutral-800 dark:text-white"
-                        : "text-neutral-500 hover:text-neutral-900"
-                    }`}
-                  >
-                    Bitbucket
+                    <Plus className="h-3.5 w-3.5" />
+                    Añadir
                   </button>
                 </div>
 
-                {/* Selección de repositorios */}
-                <div className="mt-3 space-y-1.5">
-                  <div className="text-xs text-neutral-500">
-                    Selecciona los repositorios con código fuente que servirá de puente:
-                  </div>
-                  <div className="max-h-32 overflow-y-auto rounded-xl border border-neutral-200 p-2 dark:border-neutral-800">
-                    {AVAILABLE_REPOS.map((repo) => {
+                {/* Presets Rápidos */}
+                <div>
+                  <span className="text-[11px] font-semibold text-neutral-400">
+                    O selecciona de repositorios sugeridos:
+                  </span>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {PRESET_REPOS.map((repo) => {
                       const isSelected = selectedRepos.includes(repo);
                       return (
-                        <div
+                        <button
                           key={repo}
+                          type="button"
                           onClick={() => toggleRepo(repo)}
-                          className={`flex cursor-pointer items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition ${
+                          className={`rounded-lg px-2.5 py-1 font-mono text-[11px] font-medium transition ${
                             isSelected
-                              ? "bg-neutral-100 font-semibold text-neutral-900 dark:bg-neutral-800 dark:text-white"
-                              : "text-neutral-600 hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800/40"
+                              ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                              : "border border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400 dark:hover:bg-neutral-800"
                           }`}
                         >
-                          <div className="flex items-center gap-2">
-                            <GitBranch className="h-3.5 w-3.5 text-neutral-400" />
-                            <span>{repo}</span>
-                          </div>
-                          {isSelected && <Check className="h-3.5 w-3.5 text-emerald-600" />}
-                        </div>
+                          {repo} {isSelected && "✓"}
+                        </button>
                       );
                     })}
                   </div>
-                  <p className="text-[11px] text-neutral-400">
-                    Solo puedes seleccionar repositorios a los que tengas acceso.
-                  </p>
                 </div>
               </div>
 
-              {/* Paso 2: Configurar proyecto */}
-              <div>
-                <label className="text-sm font-bold text-neutral-900 dark:text-white">
-                  2. Configura tu proyecto
+              {/* Step 2: Configurar proyecto y Battle Stack */}
+              <div className="space-y-4 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-900 text-[10px] font-black text-white dark:bg-white dark:text-neutral-900">
+                    2
+                  </span>
+                  Configuración del Proyecto & Battle Stack
                 </label>
 
-                <div className="mt-3 space-y-3">
+                <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300">
                       Nombre del proyecto
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="ej. API de Usuarios"
+                      placeholder="ej. API de Usuarios & Autenticación"
                       value={projectName}
                       onChange={(e) => setProjectName(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-neutral-300 px-3.5 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="mt-1 w-full rounded-xl border border-neutral-300 px-3.5 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-white dark:focus:border-white"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                      Descripción (opcional)
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300">
+                      Descripción corta (opcional)
                     </label>
                     <input
                       type="text"
-                      placeholder="¿Qué hace este proyecto?"
+                      placeholder="ej. Microservicio de autenticación y transacciones"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-neutral-300 px-3.5 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="mt-1 w-full rounded-xl border border-neutral-300 px-3.5 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-white dark:focus:border-white"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                      Tecnologías que deseas aprender / practicar (Battle Stack)
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300">
+                      Tecnologías objetivo a practicar (Battle Stack)
                     </label>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {AVAILABLE_TECHS.map((tech) => {
@@ -248,14 +308,15 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                             key={tech.name}
                             type="button"
                             onClick={() => toggleTech(tech.name)}
-                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
                               isSelected
-                                ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
-                                : "border border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                                ? "bg-neutral-900 text-white shadow-md dark:bg-white dark:text-neutral-900 scale-102"
+                                : "border border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-800"
                             }`}
                           >
                             <span>{tech.icon}</span>
                             <span>{tech.name}</span>
+                            {isSelected && <Check className="h-3.5 w-3.5 text-emerald-400 dark:text-emerald-600" />}
                           </button>
                         );
                       })}
@@ -264,14 +325,15 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                 </div>
               </div>
 
-              {/* Botón de envío */}
+              {/* Action Button */}
               <button
                 type="submit"
                 disabled={!projectName.trim() || selectedRepos.length === 0}
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-900 py-3 text-sm font-bold text-white shadow transition hover:bg-neutral-800 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 py-3.5 text-sm font-extrabold text-white shadow-lg transition-all hover:bg-neutral-800 hover:shadow-xl disabled:opacity-40 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
               >
-                <Sparkles className="h-4 w-4" />
-                Crear proyecto
+                <Sparkles className="h-4.5 w-4.5 text-amber-400 dark:text-amber-500" />
+                <span>Generar Proyecto & Problemas</span>
+                <ArrowRight className="h-4 w-4" />
               </button>
             </form>
           </>
