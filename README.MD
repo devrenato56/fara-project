@@ -58,7 +58,7 @@ El MVP se enfoca en **una sola cosa**: transformar código real del usuario en u
 3. **Generación del ejercicio**: se genera el mismo problema, pero en la tecnología nueva, señalando explícitamente:
    - qué conceptos son **transferibles** (ej. lógica de negocio, diseño de la API), y
    - qué conceptos son **genuinamente nuevos** (ej. manejo de concurrencia).
-4. **Modo versus (diferencial)**: el usuario resuelve el ejercicio compitiendo en tiempo real contra una IA que escribe su propia solución con errores deliberados y correcciones sobre la marcha, enfocados justo en los conceptos nuevos para ese usuario.
+4. **Modo versus (diferencial)**: el usuario resuelve el ejercicio compitiendo en tiempo real contra un miembro de su organización.
 
 
 ## Stack Tecnológico 
