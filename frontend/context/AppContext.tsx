@@ -24,7 +24,7 @@ interface AppContextType {
   fetchProject: (id: string) => Promise<void>;
   getProblems: (projectId: string) => Problem[];
   getProblem: (problemId: string) => Problem | undefined;
-  setPlan: (plan: Plan) => void;
+  setPlan: (plan: Plan) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -169,8 +169,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return undefined;
   };
 
-  const setPlan = (plan: Plan) => {
-    if (user) setUser({ ...user, plan });
+  const setPlan = async (plan: Plan) => {
+    if (!user) return;
+    setUser({ ...user, plan });
+    // Billing es un flag en el usuario (sin pasarela real): se persiste para
+    // que el plan sobreviva a un refresh y el gating de Fight sea consistente.
+    await supabase.from("users").update({ plan }).eq("id", user.id);
   };
 
   if (!authChecked || (!user && !PUBLIC_PATHS.includes(pathname))) {
