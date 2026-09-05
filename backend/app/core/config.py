@@ -14,7 +14,9 @@ class Settings(BaseSettings):
 
     github_token: str = ""
 
-    piston_api_url: str = "https://emkc.org/api/v2/piston"
+    # Publica (emkc.org) es whitelist-only desde 2/2026 -- se autohostea via
+    # backend/docker-compose.piston.yml (ver README).
+    piston_api_url: str = "http://localhost:2000/api/v2"
 
     cors_origins: list[str] = [
         "http://localhost:3000",
