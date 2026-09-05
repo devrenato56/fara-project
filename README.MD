@@ -34,6 +34,11 @@ Profesionales de software (principalmente junior) que necesitan adquirir rápida
 * Cambio de equipo o de proyecto.
 * Nuevas exigencias del mercado laboral.
 
+Perfil Junior: 
+* Dominio real de al menos 1 stack tecnológico completo (ej. Python + DJango)
+* Conocimiento superficial o nulo de la tecnología a la que desea migrar. 
+* Con proyectos o repos propios (min. 5)
+
 ### Usuario objetivo
 **Model: B2C**
 
@@ -144,8 +149,6 @@ npm run dev
 Abre [http://localhost:3000](http://localhost:3000).
 
 ### Backend
-
-El backend de FastAPI todavía no está incluido en este repositorio, por lo que no hay un servicio backend que levantar localmente en este momento. Cuando se agregue, se documentarán aquí sus requisitos, variables de entorno y comando de inicio.
 
 
 
